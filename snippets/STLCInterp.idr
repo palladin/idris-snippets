@@ -1,4 +1,4 @@
-module PartialEvalSTLCInterp
+module STLCInterp
 
 data HasType : List a -> a -> Type where
   VZ : HasType (t :: env) t
