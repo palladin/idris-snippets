@@ -9,7 +9,7 @@ data Expr : List Type -> Type -> Type where
   Var : HasType env t -> Expr env t
   Lam : Expr (a :: env) b -> Expr env (a -> b)
   App : Expr env (a -> b) -> Expr env a -> Expr env b
-
+  
 
 interpEnv : List Type -> Type
 interpEnv [] = ()
