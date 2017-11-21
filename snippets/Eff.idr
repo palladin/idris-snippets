@@ -1,6 +1,6 @@
 module Eff
 
--- The Eff monad inspired by http://okmij.org/ftp/Haskell/extensible/more.pdf
+-- The Eff monad, based on http://okmij.org/ftp/Haskell/extensible/more.pdf
 
 data Exists : List a -> a -> Type where
     Here : Exists (x :: xs) x
