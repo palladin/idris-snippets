@@ -1,10 +1,5 @@
 module Unlambda
 
-import Cont
-
-test' : Cont Int Int
-test' = ?foox
-
 -- Based on http://www.madore.org/~david/programs/unlambda/
 
 data Cont : (m : Type -> Type) -> (r : Type) -> Type where
