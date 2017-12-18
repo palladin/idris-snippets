@@ -1,6 +1,7 @@
-module Cont
+module ContT
 
 import Control.Monad.Identity
+import Control.Monad.Trans
 
 %access public export
 
@@ -19,6 +20,13 @@ Applicative (ContT r m) where
 
 Monad (ContT r m) where
   (ContK c) >>= f = ContK (\k => c (\a => let (ContK k') = f a in k' k))
+
+MonadTrans (ContT r) where
+  lift x = ContK (\k => x >>= k)
+
+
+run : (a -> m r) -> ContT r m a -> m r
+run f (ContK c) = c f
 
 reset : Monad m => ContT r m r -> m r
 reset (ContK c) = c (\x => pure x)
