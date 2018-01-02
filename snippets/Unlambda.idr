@@ -1,7 +1,7 @@
 module Unlambda
 
 import Control.Monad.Trans
-import ContT
+import snippets.ContT
 
 -- Based on http://www.madore.org/~david/programs/unlambda/
 

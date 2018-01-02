@@ -1,7 +1,7 @@
 module YinYang
 
 import Control.Monad.Trans
-import ContT
+import snippets.ContT
 
 data Rec : (r : Type) -> (m : Type -> Type) -> Type where
   RecK : (Rec r m -> ContT r m (Rec r m)) -> Rec r m

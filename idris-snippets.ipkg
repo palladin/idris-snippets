@@ -1,0 +1,3 @@
+package idris-snippets
+
+pkgs = contrib
