@@ -3,7 +3,7 @@ module ZipperTraversable
 -- Based on http://okmij.org/ftp/continuations/zipper.html#traversable
 
 import Control.Monad.Identity
-import snippets.ContT
+import src.ContT
 
 data Zipper : (t : Type -> Type) -> (a : Type) -> Type where
   ZDone : t a -> Zipper t a
