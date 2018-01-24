@@ -5,11 +5,14 @@ module Repmin
 map : (a -> b) -> Lazy a -> Lazy b
 map f l = f l
 
-trace : (a -> Lazy b -> (c, b)) -> a -> c
-trace f x = fst (loop f x)
+fix : (Lazy a -> a) -> Lazy a
+fix f = loop
   where
-    loop : (a -> Lazy b -> (c, b)) -> a -> Lazy (c, b)
-    loop f x = f x (map snd (loop f x))
+    loop : Lazy a
+    loop = f loop
+
+trace : (a -> Lazy b -> (c, b)) -> a -> c
+trace f x = fst $ fix (\rec => f x (map snd rec))
 
 data Tree a = Leaf a | Branch (Tree a) (Tree a)
 
