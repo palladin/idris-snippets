@@ -56,8 +56,8 @@ idIsEquiv x = g
   g : (a : x) -> isSingleton (fiber (id x) a)
   g = singletonTypesAreSingletons
 
-idToEq : (x, y : Type) -> Id x y -> Eq x y
-idToEq = J alpha f
+IdToEq : (x, y : Type) -> Id x y -> Eq x y
+IdToEq = J alpha f
   where
     alpha : (x, y : Type) -> Id x y -> Type
     alpha x y p = Eq x y
@@ -65,4 +65,4 @@ idToEq = J alpha f
     f x = Pair (id x) (idIsEquiv x)
 
 isUnivalent : Type
-isUnivalent = (x, y : Type) -> isEquiv (idToEq x y)
+isUnivalent = (x, y : Type) -> isEquiv (IdToEq x y)
