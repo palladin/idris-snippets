@@ -1,44 +1,34 @@
 module Classical
 -- Based on http://www.cs.nott.ac.uk/~psztxa/g53cfr/l06.html/l06.html
 
-import Control.Isomorphism
-
 -- tertium non datur
 TND : Type
-TND = {P : Type} -> Either P (P -> Void)
+TND = (P : Type) -> Either P (P -> Void)
 -- reductio ad absurdum
 RAA : Type
-RAA = {P : Type} -> ((P -> Void) -> Void) -> P
+RAA = (P : Type) -> ((P -> Void) -> Void) -> P
 -- Pierce's law
 Pierce : Type
-Pierce = {P, Q : Type} -> ((P -> Q) -> P) -> P
+Pierce = (P, Q : Type) -> ((P -> Q) -> P) -> P
 
 -- ex falso quod libet
-efq : {P : Type} -> Void -> P
+efq : (P : Type) -> Void -> P
 
 
 tndToRaa : TND -> RAA
-tndToRaa tnd = f tnd
+tndToRaa tnd P = f (tnd P)
   where
-    f : {P : Type} -> Either P (P -> Void) -> ((P -> Void) -> Void) -> P
+    f : Either P (P -> Void) -> ((P -> Void) -> Void) -> P
     f (Left p) k = p
-    f (Right notp) k = efq (k notp)
+    f (Right notp) k = efq P (k notp)
 
 raaToTnd : RAA -> TND
-raaToTnd raa = raa f
-  where
-    f : {P : Type} -> (Either P (P -> Void) -> Void) -> Void
-    f k = k (Right (\p => k (Left p)))
+raaToTnd raa P = raa (Either P (P -> Void)) (\k => k (Right (\p => k (Left p))))
+
 
 pierceToRaa : Pierce -> RAA
-pierceToRaa pierce k = let f' = pierce f in f' (\p => efq (k p))
-  where
-    f : {P : Type} -> ((((P -> Void) -> P) -> P) -> P) ->
-                        ((P -> Void) -> P) -> P
-    f _ = pierce
+pierceToRaa pierce P k = pierce (((P -> Void) -> P) -> P) P (\_ => pierce P Void) (\x => efq P (k x))
+
 
 raaToPierce : RAA -> Pierce
-raaToPierce raa = raa f
-  where
-    f : {P, Q : Type} -> ((((P -> Q) -> P) -> P) -> Void) -> Void
-    f k = k (\p => p (\q => raa (\_ => k (\_ => q))))
+raaToPierce raa P _Q = raa (((P -> _Q) -> P) -> P) (\k => k (\p => p (\q => raa _Q (\_ => k (\_ => q)))))
