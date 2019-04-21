@@ -3,7 +3,7 @@ import Control.Monad.Identity
 
 
 data Eq : (a : Type) -> (b : Type) -> Type where
-  Subs : ({f : Type ->  Type} -> f a -> f b) -> Eq a b
+  Subs : ({f : Type -> Type} -> f a -> f b) -> Eq a b
 
 
 refl : Eq a a
