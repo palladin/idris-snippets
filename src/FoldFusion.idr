@@ -59,14 +59,17 @@ data Fold : (rep : Type -> Type) -> (a : Type) -> Type where
 ofArray : Symantics rep => rep (Array a) -> Fold rep a
 ofArray arr = FC (\f, seed => newVar seed (\v => seq (foreach arr (\x => assign (f x (deref v)) v)) (deref v)))
 
-map : (rep a  -> rep b) -> Fold rep a -> Fold rep b
+fold : (rep a -> rep r -> rep r) -> rep r -> Fold rep a -> rep r
+fold f seed (FC g) = g f seed
+
+map : (rep a -> rep b) -> Fold rep a -> Fold rep b
 map f (FC g) = FC (\h => g (\x, r => h (f x) r))
+
+flatMap : (rep a -> Fold rep b) -> Fold rep a -> Fold rep b
+flatMap f (FC g) = FC (\h => g (\x, r => fold h r (f x)))
 
 filter : Symantics rep => (rep a -> rep Bool) -> Fold rep a -> Fold rep a
 filter f (FC g) = FC (\h => g (\x, r =>  ite (f x) (h x r) r))
-
-fold : (rep a -> rep r -> rep r) -> rep r -> Fold rep a -> rep r
-fold f seed (FC g) = g f seed
 
 count : Symantics rep => Fold rep a -> rep Int
 count = fold (\x, acc => acc + (int 1)) (int 0)
