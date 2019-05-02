@@ -139,18 +139,42 @@ flatMap f (SC init' next' current' step' reset') = SC (init f init') (next next'
     reset : (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
     reset reseta (st, _, _, _) = reseta st
 
+zipWith : Symantics rep => (rep a -> rep b -> rep c) -> Stream rep a -> Stream rep b -> Stream rep c
+zipWith f (SC inita nexta currenta stepa reseta) (SC initb nextb currentb stepb resetb) =
+  SC (init inita initb) (next nexta nextb) (current f currenta currentb) (step stepa stepb) (reset reseta resetb)
+  where
+    init : ((s -> rep UnitT) -> rep UnitT) -> ((s' -> rep UnitT) -> rep UnitT) -> ((s, s') -> rep UnitT) -> rep UnitT
+    init inita initb k = inita (\s => initb (\s' => k (s, s')))
+    next : (s -> rep BoolT) -> (s' -> rep BoolT) -> (s, s') -> rep BoolT
+    next nexta nextb (s, s') = nexta s && nextb s'
+    current : (rep a -> rep b -> rep c) -> (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s' -> (rep b -> rep UnitT) -> rep UnitT) -> ((s, s') -> (rep c -> rep UnitT) -> rep UnitT)
+    current f currenta currentb (s, s') k = currenta s (\a => currentb s' (\b => k (f a b)))
+    step : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s') -> rep UnitT
+    step stepa stepb (s, s') = seq (stepa s) (stepb s')
+    reset : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s') -> rep UnitT
+    reset reseta resetb (s, s') = seq (reseta s) (resetb s')
 
 example0 : Symantics rep => rep (ArrayT IntT) -> rep IntT
 example0 = sum . map (\x => x * (int 2)) . ofArray
 
 example1 : Symantics rep => rep (ArrayT IntT) -> rep IntT
-example1 arr = (sum . flatMap (\x => nested arr x) . ofArray) arr
+example1 arr = (sum . flatMap (\x => nested1 arr x) . ofArray) arr
   where
-    nested : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
-    nested arr x = (map (\x' => x * x') . ofArray) arr
+    nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
+    nested2 arr x = (map (\x' => x * x') . ofArray) arr
+    nested1 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
+    nested1 arr x = (flatMap (\x => nested2 arr x) . ofArray) arr
+
+example2 : Symantics rep => rep (ArrayT IntT) -> rep IntT
+example2 arr = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr)
+  where
+    nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
+    nested2 arr x = (map (\x' => x * x') . ofArray) arr
+    nested1 : rep (ArrayT IntT) -> Stream rep IntT
+    nested1 arr = (flatMap (\x => nested2 arr x) . ofArray) arr
 
 test : Code (ArrowT (ArrayT IntT) IntT)
-test = lam example1
+test = lam example2
 
 code : String
 code = let (C c) = test in c 0
