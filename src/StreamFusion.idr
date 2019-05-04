@@ -127,35 +127,35 @@ StreamC rep s a = (s, ((s -> rep UnitT) -> rep UnitT), (s -> rep BoolT),
                       (s -> rep UnitT), (s -> rep UnitT))
 
 flatMap : Symantics rep => (rep a -> Stream rep b) -> Stream rep a -> Stream rep b
-flatMap f (SC init' next' current' step' reset') = SC (init f init') (next next') (current current') (step step') (reset reset')
+flatMap f (SC init' next' current' step' reset') = SC (init f init') (next next') (current current' step') (step step') (reset reset')
   where
     init : (rep a -> Stream rep b) -> ((s -> rep UnitT) -> rep UnitT) -> ((s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT) -> rep UnitT
     init f inita k = newVar (bool True) (\b => newVar defaultof (\v => let (SC initb nextb currentb stepb resetb) = f (deref v) in inita (\st => initb (\st' => k (st, (_ ** b), (_ ** v), (_ ** (st', initb, nextb, currentb, stepb, resetb)))))))
     next : (s -> rep BoolT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep BoolT
-    next nexta (st, _, _, (_ ** (st', _, nextb, _, _, _))) = nexta st || nextb st' 
-    current : (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> (rep b -> rep UnitT) -> rep UnitT
-    current currenta (st, (_ ** b), (_ ** v), (_ ** (st', initb, nextb, currentb, stepb, resetb))) k =
+    next nexta (st, _, _, (_ ** (st', _, nextb, _, _, _))) = nexta st || nextb st'
+    current : (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> (rep b -> rep UnitT) -> rep UnitT
+    current currenta stepa (st, (_ ** b), (_ ** v), (_ ** (st', initb, nextb, currentb, stepb, resetb))) k =
       ite (deref b)
-          (seqs [currenta st (\a => seqs [assign a v, assign (bool False) b])])
-          (ite (nextb st') (seqs [currentb st' k, stepb st'])
+          (seqs [currenta st (\a => seqs [assign a v, stepa st, assign (bool False) b])])
+          (ite (nextb st') (currentb st' k)
                            (seqs [resetb st', assign (bool True) b]))
     step : (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
-    step stepa (st, (_ ** b), _, _) = it (deref b) (stepa st)
+    step stepa (st, _, _, (_ ** (st', _, _, _, stepb, _))) = stepb st'
     reset : (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
-    reset reseta (st, _, _, _) = reseta st
+    reset reseta (st, _, _, (_ ** (st', _, _, _, _, resetb))) = seqs [reseta st, resetb st']
 
 zipWith : Symantics rep => (rep a -> rep b -> rep c) -> Stream rep a -> Stream rep b -> Stream rep c
 zipWith f (SC inita nexta currenta stepa reseta) (SC initb nextb currentb stepb resetb) =
-  SC (init inita initb) (next nexta nextb) (current f currenta currentb) (step stepa stepb) (reset reseta resetb)
+  SC (init inita initb) (next nexta nextb) (current f stepa stepb currenta currentb) step (reset reseta resetb)
   where
     init : ((s -> rep UnitT) -> rep UnitT) -> ((s' -> rep UnitT) -> rep UnitT) -> ((s, s') -> rep UnitT) -> rep UnitT
     init inita initb k = inita (\s => initb (\s' => k (s, s')))
     next : (s -> rep BoolT) -> (s' -> rep BoolT) -> (s, s') -> rep BoolT
     next nexta nextb (s, s') = nexta s && nextb s'
-    current : (rep a -> rep b -> rep c) -> (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s' -> (rep b -> rep UnitT) -> rep UnitT) -> ((s, s') -> (rep c -> rep UnitT) -> rep UnitT)
-    current f currenta currentb (s, s') k = currenta s (\a => currentb s' (\b => letVal a (\a' => letVal b (\b' => k (f a' b')))))
-    step : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s') -> rep UnitT
-    step stepa stepb (s, s') = seq (stepa s) (stepb s')
+    current : (rep a -> rep b -> rep c) -> (s -> rep UnitT) -> (s' -> rep UnitT) -> (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s' -> (rep b -> rep UnitT) -> rep UnitT) -> ((s, s') -> (rep c -> rep UnitT) -> rep UnitT)
+    current f stepa stepb currenta currentb (s, s') k = currenta s (\a => currentb s' (\b => letVal a (\a' => letVal b (\b' => seqs [k (f a' b'), stepa s, stepb s']))))
+    step : (s, s') -> rep UnitT
+    step (s, s') = defaultof
     reset : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s') -> rep UnitT
     reset reseta resetb (s, s') = seq (reseta s) (resetb s')
 
