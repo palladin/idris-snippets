@@ -34,6 +34,7 @@ interface Symantics (rep : TypeT -> Type) where
   deref : rep (VarT s a) -> rep a
   assign : rep a -> rep (VarT s a) -> rep UnitT
   newVar : rep a -> ({s : Type} -> rep (VarT s a) -> rep b) -> rep b
+  letVal : rep a -> (rep a -> rep b) -> rep b
   index : rep IntT -> rep (ArrayT a) -> rep a
   length : rep (ArrayT a) -> rep IntT
   while : rep BoolT -> rep UnitT -> rep UnitT
@@ -69,14 +70,17 @@ Symantics Code where
   newVar {a} (C s) f = C (\v => let x = "x" ++ show v in
                                 let (C c) = f $ the (Code (VarT () a)) (C (\_ => x)) in
                                 "let " ++ x ++ " = ref " ++ s v ++ " in " ++ c (v + 1))
+  letVal (C s) f = C (\v => let x = "x" ++ show v in
+                            let (C c) = f $ C (\_ => x) in
+                            "let " ++ x ++ " = " ++ s v ++ " in " ++ c (v + 1))
   index (C i) (C arr) = C (\v => arr v ++ ".[" ++ i v ++ "]")
   length (C arr) = C (\v => arr v ++ ".Length")
   while (C p) (C b) = C (\v => "(while " ++ p v ++ " do " ++ b v ++ ")")
   seq (C fs) (C sn) = C (\v => "(" ++ fs v ++ "; " ++ sn v ++ ")")
   seqs steps = foldr seq defaultof steps
   lam {a} f = C (\v => let x = "x" ++ show v in
-                   let (C g) = f (C (\_ => x)) in
-                   "(fun (" ++ x ++ " : " ++ show a ++ ") -> " ++ g (v + 1) ++ ")")
+                       let (C g) = f (C (\_ => x)) in
+                       "(fun (" ++ x ++ " : " ++ show a ++ ") -> " ++ g (v + 1) ++ ")")
   app (C f) (C g) = C (\v => "(" ++ f v ++ " " ++ g v ++ ")")
 
 
@@ -95,7 +99,7 @@ ofArray arr = SC (init arr) next current step reset
     next : (rep (ArrayT a), DPair Type (\s => rep (VarT s IntT))) -> rep BoolT
     next (arr, (_ ** v)) = deref v < length arr
     current : (rep (ArrayT a), DPair Type (\s => rep (VarT s IntT))) -> (rep a -> rep UnitT) -> rep UnitT
-    current (arr, (_ ** v)) k = k (index (deref v) arr)
+    current (arr, (_ ** v)) k = letVal (index (deref v) arr) (\x => k x)
     step : (rep (ArrayT a), DPair Type (\s => rep (VarT s IntT))) -> rep UnitT
     step (arr, (_ ** v)) = assign (deref v + (int 1)) v
     reset : (rep (ArrayT a), DPair Type (\s => rep (VarT s IntT))) -> rep UnitT
@@ -114,8 +118,8 @@ count = fold (\x, acc => acc + (int 1)) (int 0)
 sum : Symantics rep => Stream rep IntT -> rep IntT
 sum = fold (\x, acc => x + acc) (int 0)
 
-map : (rep a -> rep b) -> Stream rep a -> Stream rep b
-map f (SC init next current step reset) = SC init next (\s, k => current s (\x => k (f x))) step reset
+map : Symantics rep => (rep a -> rep b) -> Stream rep a -> Stream rep b
+map f (SC init next current step reset) = SC init next (\s, k => current s (\x => letVal x (\x' => k (f x')))) step reset
 
 StreamC : (TypeT -> Type) -> Type -> TypeT -> Type
 StreamC rep s a = (s, ((s -> rep UnitT) -> rep UnitT), (s -> rep BoolT),
@@ -148,7 +152,7 @@ zipWith f (SC inita nexta currenta stepa reseta) (SC initb nextb currentb stepb 
     next : (s -> rep BoolT) -> (s' -> rep BoolT) -> (s, s') -> rep BoolT
     next nexta nextb (s, s') = nexta s && nextb s'
     current : (rep a -> rep b -> rep c) -> (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s' -> (rep b -> rep UnitT) -> rep UnitT) -> ((s, s') -> (rep c -> rep UnitT) -> rep UnitT)
-    current f currenta currentb (s, s') k = currenta s (\a => currentb s' (\b => k (f a b)))
+    current f currenta currentb (s, s') k = currenta s (\a => currentb s' (\b => letVal a (\a' => letVal b (\b' => k (f a' b')))))
     step : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s') -> rep UnitT
     step stepa stepb (s, s') = seq (stepa s) (stepb s')
     reset : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s') -> rep UnitT
