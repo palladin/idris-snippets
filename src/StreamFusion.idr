@@ -132,12 +132,13 @@ flatMap f (SC init' next' current' step' reset') = SC (init f init') (next next'
     init : (rep a -> Stream rep b) -> ((s -> rep UnitT) -> rep UnitT) -> ((s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT) -> rep UnitT
     init f inita k = newVar (bool True) (\b => newVar defaultof (\v => let (SC initb nextb currentb stepb resetb) = f (deref v) in inita (\st => initb (\st' => k (st, (_ ** b), (_ ** v), (_ ** (st', initb, nextb, currentb, stepb, resetb)))))))
     next : (s -> rep BoolT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep BoolT
-    next nexta (st, _, _, _) = nexta st
+    next nexta (st, _, _, (_ ** (st', _, nextb, _, _, _))) = nexta st || nextb st' 
     current : (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> (rep b -> rep UnitT) -> rep UnitT
     current currenta (st, (_ ** b), (_ ** v), (_ ** (st', initb, nextb, currentb, stepb, resetb))) k =
-      seqs [it (deref b) (seqs [currenta st (\a => assign a v), assign (bool False) b]),
-            ite (nextb st') (seqs [currentb st' k, stepb st'])
-                            (seqs [resetb st', assign (bool True) b])]
+      ite (deref b)
+          (seqs [currenta st (\a => seqs [assign a v, assign (bool False) b])])
+          (ite (nextb st') (seqs [currentb st' k, stepb st'])
+                           (seqs [resetb st', assign (bool True) b]))
     step : (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
     step stepa (st, (_ ** b), _, _) = it (deref b) (stepa st)
     reset : (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
