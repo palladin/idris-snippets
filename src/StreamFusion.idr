@@ -127,22 +127,20 @@ StreamC rep s a = (s, ((s -> rep UnitT) -> rep UnitT), (s -> rep BoolT),
                       (s -> rep UnitT))
 
 flatMap : Symantics rep => (rep a -> Stream rep b) -> Stream rep a -> Stream rep b
--- flatMap f (SC init' next' current' step' reset') = SC (init f init') next (current current' step' next' ) step (reset reset')
---   where
---     init : (rep a -> Stream rep b) -> ((s -> rep UnitT) -> rep UnitT) -> ((s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT) -> rep UnitT
---     init f inita k = newVar (bool True) (\b => newVar (bool True) (\b' => newVar defaultof (\v => let (SC initb nextb currentb stepb resetb) = f (deref v) in inita (\st => initb (\st' => k (st, (_ ** b), (_ ** b'), (_ ** v), (_ ** (st', initb, nextb, currentb, stepb, resetb))))))))
---     next : (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep BoolT
---     next (st, _, (_ ** b'), _, (_ ** (st', _, nextb, _, _, _))) = deref b'
---     current : (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s -> rep UnitT) -> (s -> rep BoolT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> (rep b -> rep UnitT) -> rep UnitT
---     current currenta stepa nexta (st, (_ ** b), (_ ** b'), (_ ** v), (_ ** (st', initb, nextb, currentb, stepb, resetb))) k =
---       ite (deref b)
---           (ite (not (nexta st)) (assign (bool False) b') (seqs [currenta st (\a => seqs [assign a v, assign (bool False) b]), stepa st]))
---           (ite (nextb st') (currentb st' k)
---                            (seqs [resetb st', assign (bool True) b]))
---     step : (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
---     step (st, _, _, _, (_ ** (st', _, _, _, stepb, _))) = stepb st'
---     reset : (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
---     reset reseta (st, _, _, _, (_ ** (st', _, _, _, _, resetb))) = seqs [reseta st, resetb st']
+flatMap f (SC init' next' current' reset') = SC (init f init') next (current current' next') (reset reset')
+  where
+    init : (rep a -> Stream rep b) -> ((s -> rep UnitT) -> rep UnitT) -> ((s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT) -> rep UnitT
+    init f inita k = newVar (bool True) (\b => newVar (bool True) (\b' => newVar defaultof (\v => let (SC initb nextb currentb resetb) = f (deref v) in inita (\st => initb (\st' => k (st, (_ ** b), (_ ** b'), (_ ** v), (_ ** (st', initb, nextb, currentb, resetb))))))))
+    next : (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep BoolT
+    next (st, _, (_ ** b'), _, (_ ** (st', _, _, _, _))) = deref b'
+    current : (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s -> rep BoolT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> (rep b -> rep UnitT) -> rep UnitT
+    current currenta nexta (st, (_ ** b), (_ ** b'), (_ ** v), (_ ** (st', initb, nextb, currentb, resetb))) k =
+      ite (deref b)
+          (ite (not (nexta st)) (assign (bool False) b') (seqs [currenta st (\a => seqs [assign a v, assign (bool False) b])]))
+          (ite (nextb st') (currentb st' k)
+                           (seqs [resetb st', assign (bool True) b]))
+    reset : (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
+    reset reseta (st, _, (_ ** b'), _, (_ ** (st', _, _, _, resetb))) = seqs [assign (bool True) b',reseta st, resetb st']
 
 zipWith : Symantics rep => (rep a -> rep b -> rep c) -> Stream rep a -> Stream rep b -> Stream rep c
 -- zipWith f (SC inita nexta currenta stepa reseta) (SC initb nextb currentb stepb resetb) =
@@ -179,7 +177,7 @@ example2 arr = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr)
     nested1 arr = (flatMap (\x => nested2 arr x) . ofArray) arr
 
 test : Code (ArrowT (ArrayT IntT) IntT)
-test = lam example0
+test = lam example1
 
 code : String
 code = let (C c) = test in c 0
