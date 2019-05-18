@@ -143,19 +143,20 @@ flatMap f (SC init' next' current' reset') = SC (init f init') next (current cur
     reset reseta (st, _, (_ ** b'), _, (_ ** (st', _, _, _, resetb))) = seqs [assign (bool True) b',reseta st, resetb st']
 
 zipWith : Symantics rep => (rep a -> rep b -> rep c) -> Stream rep a -> Stream rep b -> Stream rep c
--- zipWith f (SC inita nexta currenta stepa reseta) (SC initb nextb currentb stepb resetb) =
---   SC (init inita initb) (next nexta nextb) (current f stepa stepb currenta currentb) step (reset reseta resetb)
---   where
---     init : ((s -> rep UnitT) -> rep UnitT) -> ((s' -> rep UnitT) -> rep UnitT) -> ((s, s') -> rep UnitT) -> rep UnitT
---     init inita initb k = inita (\s => initb (\s' => k (s, s')))
---     next : (s -> rep BoolT) -> (s' -> rep BoolT) -> (s, s') -> rep BoolT
---     next nexta nextb (s, s') = nexta s && nextb s'
---     current : (rep a -> rep b -> rep c) -> (s -> rep UnitT) -> (s' -> rep UnitT) -> (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s' -> (rep b -> rep UnitT) -> rep UnitT) -> ((s, s') -> (rep c -> rep UnitT) -> rep UnitT)
---     current f stepa stepb currenta currentb (s, s') k = currenta s (\a => currentb s' (\b => letVal a (\a' => letVal b (\b' => seqs [k (f a' b'), stepa s, stepb s']))))
---     step : (s, s') -> rep UnitT
---     step (s, s') = defaultof
---     reset : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s') -> rep UnitT
---     reset reseta resetb (s, s') = seq (reseta s) (resetb s')
+zipWith f (SC inita nexta currenta reseta) (SC initb nextb currentb resetb) =
+  SC (init inita initb) (next nexta nextb) (current f currenta currentb) (reset reseta resetb)
+  where
+    init : ((s -> rep UnitT) -> rep UnitT) -> ((s' -> rep UnitT) -> rep UnitT) -> ((s, s', DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => rep (VarT s' b))) -> rep UnitT) -> rep UnitT
+    init inita initb k = newVar (bool True) (\b => newVar (bool False) (\b' => newVar defaultof (\v => newVar defaultof (\v' => inita (\s => initb (\s' => k (s, s', (_ ** b), (_ ** b'), (_ ** v), (_ ** v'))))))))
+    next : (s -> rep BoolT) -> (s' -> rep BoolT) -> (s, s', DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => rep (VarT s' b))) -> rep BoolT
+    next nexta nextb (s, s', _, _, _, _) = nexta s && nextb s'
+    current : (rep a -> rep b -> rep c) -> (s -> (rep a -> rep UnitT) -> rep UnitT) -> (s' -> (rep b -> rep UnitT) -> rep UnitT) ->
+                                           (s, s', DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => rep (VarT s' b))) ->
+                                           (rep c -> rep UnitT) -> rep UnitT
+    current f currenta currentb (s, s', (_ ** b), (_ ** b'), (_ ** v), (_ ** v')) k =
+      currenta s (\a => currentb s' (\b => letVal a (\a' => letVal b (\b' => k (f a' b')))))
+    reset : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s', DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => rep (VarT s' b))) -> rep UnitT
+    reset reseta resetb (s, s', (_ ** b), (_ ** b'), _, _) = seqs [assign (bool True) b, assign (bool False) b', reseta s, resetb s']
 
 example0 : Symantics rep => rep (ArrayT IntT) -> rep IntT
 example0 = sum . map (\x => x * (int 2)) . ofArray
@@ -170,6 +171,12 @@ example1 arr = (sum . flatMap (\x => nested1 arr x) . ofArray) arr
 
 example2 : Symantics rep => rep (ArrayT IntT) -> rep IntT
 example2 arr = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr)
+where
+  nested1 : rep (ArrayT IntT) -> Stream rep IntT
+  nested1 arr = (map (\x => x * (int 2)) . ofArray) arr
+
+example3 : Symantics rep => rep (ArrayT IntT) -> rep IntT
+example3 arr = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr)
   where
     nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
     nested2 arr x = (map (\x' => x * x') . ofArray) arr
@@ -177,7 +184,7 @@ example2 arr = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr)
     nested1 arr = (flatMap (\x => nested2 arr x) . ofArray) arr
 
 test : Code (ArrowT (ArrayT IntT) IntT)
-test = lam example1
+test = lam example3
 
 code : String
 code = let (C c) = test in c 0
