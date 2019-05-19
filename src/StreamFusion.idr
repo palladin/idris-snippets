@@ -189,8 +189,16 @@ example3 arr = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr)
     nested1 : rep (ArrayT IntT) -> Stream rep IntT
     nested1 arr = (flatMap (\x => nested2 arr x) . ofArray) arr
 
+example4 : Symantics rep => rep (ArrayT IntT) -> rep IntT
+example4 arr = sum $ map (\x => x * (int 2)) (nested1 arr)
+where
+  nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
+  nested2 arr x = (map (\x' => x * x') . ofArray) arr
+  nested1 : rep (ArrayT IntT) -> Stream rep IntT
+  nested1 arr = (flatMap (\x => nested2 arr x) . flatMap (\x => nested2 arr x) . ofArray) arr
+
 test : Code (ArrowT (ArrayT IntT) IntT)
-test = lam example3
+test = lam example4
 
 code : String
 code = let (C c) = test in c 0
