@@ -140,7 +140,7 @@ flatMap f (SC init' next' current' reset') = SC (init f init') next (current cur
           (ite (nextb st') (currentb st' k)
                            (seqs [resetb st', assign (bool True) b]))
     reset : (s -> rep UnitT) -> (s, DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => StreamC rep s' b)) -> rep UnitT
-    reset reseta (st, _, (_ ** b'), _, (_ ** (st', _, _, _, resetb))) = seqs [assign (bool True) b',reseta st, resetb st']
+    reset reseta (st, (_ ** b), (_ ** b'), _, (_ ** (st', _, _, _, resetb))) = seqs [assign (bool True) b, assign (bool True) b',reseta st, resetb st']
 
 zipWith : Symantics rep => (rep a -> rep b -> rep c) -> Stream rep a -> Stream rep b -> Stream rep c
 zipWith f (SC inita nexta currenta reseta) (SC initb nextb currentb resetb) =
@@ -154,7 +154,14 @@ zipWith f (SC inita nexta currenta reseta) (SC initb nextb currentb resetb) =
                                            (s, s', DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => rep (VarT s' b))) ->
                                            (rep c -> rep UnitT) -> rep UnitT
     current f currenta currentb (s, s', (_ ** b), (_ ** b'), (_ ** v), (_ ** v')) k =
-      currenta s (\a => currentb s' (\b => letVal a (\a' => letVal b (\b' => k (f a' b')))))
+      seqs [it (deref b) (currenta s (\x => seqs [assign x v, assign (bool False) b, assign (bool True) b'])),
+            it (deref b') (currentb s' (\x => seqs [assign x v', assign (bool False) b'])),
+            it (not (deref b) && not (deref b'))
+               (seqs [
+                  k (f (deref v) (deref v')),
+                  assign (bool True) b
+                ])]
+      --currenta s (\a => currentb s' (\b => letVal a (\a' => letVal b (\b' => k (f a' b')))))
     reset : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s', DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => rep (VarT s' b))) -> rep UnitT
     reset reseta resetb (s, s', (_ ** b), (_ ** b'), _, _) = seqs [assign (bool True) b, assign (bool False) b', reseta s, resetb s']
 
