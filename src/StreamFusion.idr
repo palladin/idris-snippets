@@ -161,7 +161,6 @@ zipWith f (SC inita nexta currenta reseta) (SC initb nextb currentb resetb) =
                   k (f (deref v) (deref v')),
                   assign (bool True) b
                 ])]
-      --currenta s (\a => currentb s' (\b => letVal a (\a' => letVal b (\b' => k (f a' b')))))
     reset : (s -> rep UnitT) -> (s' -> rep UnitT) -> (s, s', DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' BoolT)), DPair Type (\s' => rep (VarT s' a)), DPair Type (\s' => rep (VarT s' b))) -> rep UnitT
     reset reseta resetb (s, s', (_ ** b), (_ ** b'), _, _) = seqs [assign (bool True) b, assign (bool False) b', reseta s, resetb s']
 
