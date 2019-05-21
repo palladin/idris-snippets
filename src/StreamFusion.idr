@@ -47,7 +47,6 @@ interface Symantics (rep : TypeT -> Type) where
 data Code : TypeT -> Type where
   C : (Int -> String) -> Code a
 
-
 Symantics Code where
   defaultof {a = UnitT} = C (\_ => "()")
   defaultof {a = IntT} = C (\_ => "0")
@@ -121,6 +120,9 @@ sum = fold (\x, acc => x + acc) (int 0)
 map : Symantics rep => (rep a -> rep b) -> Stream rep a -> Stream rep b
 map f (SC init next current reset) = SC init next (\s, k => current s (\x => letVal x (\x' => k (f x')))) reset
 
+filter : Symantics rep => (rep a -> rep BoolT) -> Stream rep a -> Stream rep a
+filter pred (SC init next current reset) = SC init next (\s, k => current s (\x => letVal x (\x' => ite (pred x') (k x') defaultof))) reset
+
 StreamC : (TypeT -> Type) -> Type -> TypeT -> Type
 StreamC rep s a = (s, ((s -> rep UnitT) -> rep UnitT), (s -> rep BoolT),
                       (s -> (rep a -> rep UnitT) -> rep UnitT),
@@ -165,7 +167,7 @@ zipWith f (SC inita nexta currenta reseta) (SC initb nextb currentb resetb) =
     reset reseta resetb (s, s', (_ ** b), (_ ** b'), _, _) = seqs [assign (bool True) b, assign (bool False) b', reseta s, resetb s']
 
 example0 : Symantics rep => rep (ArrayT IntT) -> rep IntT
-example0 = sum . map (\x => x * (int 2)) . ofArray
+example0 = sum . map (\x => x * (int 2)) . filter (\x => x < (int 3)) . ofArray
 
 example1 : Symantics rep => rep (ArrayT IntT) -> rep IntT
 example1 arr = (sum . flatMap (\x => nested1 arr x) . ofArray) arr
