@@ -181,8 +181,8 @@ where
   nested1 : rep (ArrayT IntT) -> Stream rep IntT
   nested1 arr = (map (\x => x * (int 2)) . ofArray) arr
 
-example3 : Symantics rep => rep (ArrayT IntT) -> rep IntT
-example3 arr = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr)
+example3 : Symantics rep => rep (ArrayT IntT) -> rep (ArrayT IntT) -> rep IntT
+example3 arr arr' = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr')
   where
     nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
     nested2 arr x = (map (\x' => x * x') . ofArray) arr
@@ -197,8 +197,11 @@ where
   nested1 : rep (ArrayT IntT) -> Stream rep IntT
   nested1 arr = (flatMap (\x => nested2 arr x) . flatMap (\x => nested2 arr x) . ofArray) arr
 
-test : Code (ArrowT (ArrayT IntT) IntT)
-test = lam example4
+test0 : Code (ArrowT (ArrayT IntT) IntT)
+test0 = lam example0
 
-code : String
-code = let (C c) = test in c 0
+test3 : Code (ArrowT (ArrayT IntT) (ArrowT (ArrayT IntT) IntT))
+test3 = lam (\arr => lam (\arr' => example3 arr arr'))
+
+compile : Code a -> String
+compile code = let (C c) = code in c 0
