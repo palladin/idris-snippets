@@ -187,7 +187,7 @@ example3 : Symantics rep => rep (ArrayT IntT) -> rep (ArrayT IntT) -> rep IntT
 example3 arr arr' = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr')
   where
     nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
-    nested2 arr x = (map (\x' => x * x') . ofArray) arr
+    nested2 arr x = (filter (\x' => x == x') . ofArray) arr
     nested1 : rep (ArrayT IntT) -> Stream rep IntT
     nested1 arr = (flatMap (\x => nested2 arr x) . ofArray) arr
 
