@@ -12,7 +12,7 @@ interface Monad m => MonadPlus (m : Type -> Type) where
 
 interface MonadPlus m => MonadLogic (m : Type -> Type) where
   msplit : m a -> m (Maybe (a, m a))
-  
+
   interleave : MonadLogic m => m a -> m a -> m a
   interleave @{constr} m1 m2 = do r <- msplit m1
                                   case r of
@@ -42,4 +42,23 @@ reflect Nothing = mzero
 reflect (Just (a, m)) = pure a `mplus` m
 
 data LogicT : (m : Type -> Type) -> (a : Type) -> Type where
-    C : ({r : Type} -> (a -> m r -> m r) -> m r -> m r) -> LogicT m a
+    LT : ({r : Type} -> (a -> m r -> m r) -> m r -> m r) -> LogicT m a
+
+Functor (LogicT m) where
+  map f (LT g) = LT $ \sk, fk => g (sk . f) fk
+
+Applicative (LogicT m) where
+  pure a = LT $ \sk, fk => sk a fk
+  (LT f) <*> (LT g) = LT $ \sk, fk => f (\sk', fk' => g (sk . sk') fk') fk
+
+Monad (LogicT m) where
+  (LT g) >>= f = LT $ \sk, fk => g (\a, fk' => let (LT g') = f a in g' sk fk') fk
+
+MonadPlus (LogicT m) where
+  mzero = LT $ \sk, fk => fk
+  mplus (LT f) (LT f') = LT $ \sk, fk => f sk (f' sk fk)
+
+MonadTrans LogicT where
+  lift m = LT $ \sk, fk => m >>= \a => sk a fk
+
+MonadLogic (LogicT m) where
