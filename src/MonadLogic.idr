@@ -10,39 +10,35 @@ interface Monad m => MonadPlus (m : Type -> Type) where
     mplus : m a -> m a -> m a
     mzero : m a
 
-MonadPlus List where
-  mplus = (++)
-  mzero = []
-
 interface MonadPlus m => MonadLogic (m : Type -> Type) where
-  msplit : m a -> m (Maybe (a, m a))
+  msplit : m a -> m (Maybe (a, () -> m a))
   interleave : m a -> m a -> m a
   bind : m a -> (a -> m b) -> m b
   ifte : m a -> (a -> m b) -> m b -> m b
   once : m a -> m a
 
 
-reflect : MonadLogic m => Maybe (a, m a) -> m a
+reflect : MonadLogic m => Maybe (a, () -> m a) -> m a
 reflect Nothing = mzero
-reflect (Just (a, m)) = pure a `mplus` m
+reflect (Just (a, fk)) = pure a `mplus` (fk ())
 
 interleave' : MonadLogic m => m a -> m a -> m a
 interleave' m1 m2 = do r <- msplit m1
                        case r of
                         Nothing => m2
-                        Just (a, m1') => (pure a) `mplus` (interleave' m2 m1')
+                        Just (a, fk) => (pure a) `mplus` (interleave' m2 (fk ()))
 
 bind' : MonadLogic m => m a -> (a -> m b) -> m b
 bind' ma f = do r <- msplit ma
                 case r of
                  Nothing => mzero
-                 Just (a, m') => interleave (f a) (m' `bind'` f)
+                 Just (a, fk) => interleave (f a) ((fk ()) `bind'` f)
 
 ifte' : MonadLogic m => m a -> (a -> m b) -> m b -> m b
 ifte' t th el = do r <- msplit t
                    case r of
                     Nothing => el
-                    Just (a, m') => (th a) `mplus` (m' >>= th)
+                    Just (a, fk) => (th a) `mplus` ((fk ()) >>= th)
 
 once' : MonadLogic m => m a -> m a
 once' m = do r <- msplit m
@@ -51,7 +47,7 @@ once' m = do r <- msplit m
                Just (a, _) => pure a
 
 data LogicT : (m : Type -> Type) -> (a : Type) -> Type where
-    LT : ({r : Type} -> (a -> m r -> m r) -> m r -> m r) -> LogicT m a
+    LT : ({r : Type} -> (a -> (() -> m r) -> m r) -> (() -> m r) -> m r) -> LogicT m a
 
 Functor (LogicT m) where
   map f (LT g) = LT $ \sk, fk => g (sk . f) fk
@@ -64,14 +60,14 @@ Monad (LogicT m) where
   (LT g) >>= f = LT $ \sk, fk => g (\a, fk' => let (LT g') = f a in g' sk fk') fk
 
 MonadPlus (LogicT m) where
-  mzero = LT $ \sk, fk => fk
-  mplus (LT f) (LT f') = LT $ \sk, fk => f sk (f' sk fk)
+  mzero = LT $ \sk, fk => fk ()
+  mplus (LT f) (LT f') = LT $ \sk, fk => f sk (\() => f' sk fk)
 
 MonadTrans LogicT where
   lift m = LT $ \sk, fk => m >>= \a => sk a fk
 
 Monad m => MonadLogic (LogicT m) where
-  msplit (LT f) = lift $ f (\a, fk => pure $ Just (a, lift fk >>= reflect)) (pure Nothing)
+  msplit (LT f) = lift $ f (\a, fk => pure $ Just (a, \() => lift (fk ()) >>= reflect)) (\() => pure Nothing)
   interleave = interleave'
   bind = bind'
   ifte = ifte'
@@ -79,14 +75,18 @@ Monad m => MonadLogic (LogicT m) where
 
 observe : Monad m => Nat -> LogicT m a -> m (List a)
 observe Z _ = pure []
-observe (S n) m = let (LT f) = msplit m in f sk (pure [])
+observe (S n) m = let (LT f) = msplit m in f sk (\() => pure [])
   where
-    sk : {a : Type, m : Type -> Type} -> Monad m => Maybe (a, LogicT m a) -> m (List a) -> m (List a)
-    sk Nothing m = pure []
-    sk (Just (a, m')) m = map (\xs => a :: xs) (observe n m')
+    sk : {a : Type, m : Type -> Type} -> Monad m => Maybe (a, () -> LogicT m a) -> (() -> m (List a)) -> m (List a)
+    sk Nothing fk = pure []
+    sk (Just (a, fk')) fk = map (\xs => a :: xs) (observe n (fk' ()))
 
 ones : MonadPlus m => Int -> m Int
 ones n = if n <= 0 then mzero else (pure 1) `mplus` (ones (n - 1))
 
 zeros : MonadPlus m => Int -> m Int
 zeros n = if n <= 0 then mzero else (pure 0) `mplus` (zeros (n - 1))
+
+
+test : List (List Int)
+test = observe 10 (ones 5 `interleave` zeros 5)
