@@ -33,7 +33,7 @@ assemble (IntC :: fmt) (n, vs) = show n :: assemble fmt vs
 assemble ((RawC c) :: fmt) vs = pack (the (List Char) [c])  :: assemble fmt vs
 
 printf : (str : String) -> Arrows (size' (parse (unpack str))) (format (parse (unpack str))) String
-printf str = let fmt = parse (unpack str) in curryn (size' (parse (unpack str))) (concat . assemble (parse (unpack str)))
+printf str = let fmt = parse (unpack str) in curryn (size' fmt) (concat . assemble fmt)
 
 lessThan : Int -> Int -> String
 lessThan = printf "%d < %d"
