@@ -4,6 +4,8 @@ module GenericArity
 
 import Data.Vect
 
+%access public export
+
 Types : Nat -> Type
 Types n = Vect n Type
 
