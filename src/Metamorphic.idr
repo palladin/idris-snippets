@@ -27,7 +27,7 @@ parameters (a : Type, b : Type, s : Type, f : s -> a -> s, g : s -> Maybe (b, s)
   cbp : (st : s) -> {h : s -> s} -> AlgList a (fromLeftAlg f) (\x => x) h -> CoAlgList b g (h st)
   cbp s [] with (g s) proof prf
     cbp s [] | Nothing = Empty (sym prf)
-    cbp s [] | (Just (y, s')) = Cons y (sym prf) (cbp s' [])
+    cbp s [] | Just (y, s') = Cons y (sym prf) (cbp s' [])
   cbp s (a :: as) = cbp (f s a) as
 
   lemma : {st : s} -> {y : b} -> {st' : s} -> {h : s -> s} -> AlgList a (fromLeftAlg f) (\x => x) h -> g st = Just (y, st') -> g (h st) = Just (y, h st')
@@ -35,3 +35,7 @@ parameters (a : Type, b : Type, s : Type, f : s -> a -> s, g : s -> Maybe (b, s)
   lemma (a :: as) eq = lemma as (sc eq)
 
   stream : (st : s) -> {h : s -> s} -> AlgList a (fromLeftAlg f) (\x => x) h -> CoAlgList b g (h st)
+  stream s as with (g s) proof prf
+    stream s [] | Nothing  = Empty (sym prf)
+    stream s (a :: as) | Nothing  = stream (f s a) as
+    stream s as | Just (y, s') = Cons y (lemma as (sym prf)) (stream s' as)
