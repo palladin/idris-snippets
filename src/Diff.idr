@@ -1,5 +1,7 @@
 module Diff
 
+-- Based on https://arxiv.org/pdf/1803.10228.pdf
+
 import src.Expr
 
 
