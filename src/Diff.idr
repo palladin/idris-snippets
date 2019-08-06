@@ -15,7 +15,7 @@ data Reverse : TypeT -> Type where
 
 
 DiffSymantics Reverse where
-  d x = R (\k => newVar (double 0) (\d => k (double x, d)))
+  d x = R (\k => letVal (double x) (\x => newVar (double 0) (\d => k (x, d))))
 
   (+) (R l) (R r) = R (\k => l (\(lv, ld) =>
                              r (\(rv, rd) => letVal (lv <+> rv) (\x =>
