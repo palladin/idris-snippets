@@ -63,6 +63,7 @@ Symantics Code where
   defaultof {a = (VarT x)} = C (\_ => "null")
   defaultof {a = (ArrowT x y)} = C (\_ => "null")
   int x = C (\_ => show x)
+  double x = C (\_ => show x)
   bool x = C (\_ => if x then "true" else "false")
   (==) (C l) (C r) = C (\v => "( " ++ l v ++ " = " ++ r v ++ " )")
   (>) (C l) (C r) = C (\v => "( " ++ l v ++ " > " ++ r v ++ " )")
