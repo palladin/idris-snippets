@@ -10,9 +10,6 @@ interface Sortable (f : Type -> Type) where
   get : Sorted a cmp -> f a
 
 
-data Test' : (a : Type) -> (a -> a -> Ordering) -> Type where
-   C' : (f : (a -> a -> Ordering)) -> Test' a f
-
 Sortable List where
   Sorted a cmp = List a
 
