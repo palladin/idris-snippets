@@ -1,5 +1,7 @@
 module Circuits
 
+-- Based on http://okmij.org/ftp/tagless-final/course2/
+
 interface Sym where
   Repr : Type
 
@@ -32,6 +34,12 @@ namespace Ex
     lit : Bool -> Repr
     nand : Repr -> Repr -> Repr
 
+[boolNAND] NAND where
+  Repr = Bool
+
+  lit x = x
+  nand x y =  not (x && y)
+
 [strNAND] NAND where
   Repr = String
 
@@ -49,5 +57,5 @@ namespace Ex
 ex : Sym => Repr
 ex = lit True && (neg (lit False))
 
-test : String
-test = ex @{nandSym @{strNAND}}
+test : Bool
+test = ex @{nandSym @{boolNAND}}
