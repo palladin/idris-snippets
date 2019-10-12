@@ -2,26 +2,42 @@ module SMTLib
 
 data TypeT : Type where
   BoolT : TypeT
+  IntT : TypeT
+  RealT : TypeT
   BitVecT : Nat -> TypeT
 
 Show TypeT where
   show BoolT = "Bool"
+  show IntT = "Int"
+  show RealT = "Real"
   show (BitVecT n) = "BitVec " ++ show n
 
-interface Symantics (rep : TypeT -> Type) where
-  bool : Bool -> rep BoolT
-  int : Int -> (n : Nat) -> rep (BitVecT n)
-  bitVar : String -> (n : Nat) -> rep (BitVecT n)
-  (+) : rep (BitVecT n) -> rep (BitVecT n) -> rep (BitVecT n)
-  (*) : rep (BitVecT n) -> rep (BitVecT n) -> rep (BitVecT n)
-  (==) : rep a -> rep a -> rep BoolT
-  (&&) : rep BoolT -> rep BoolT -> rep BoolT
-  (||) : rep BoolT -> rep BoolT -> rep BoolT
-  not : rep BoolT -> rep BoolT
-  ite : rep BoolT -> rep BoolT -> rep BoolT -> rep BoolT
+interface Smt where
+  Expr : TypeT -> Type
+  Cmd : Type -> Type
 
+  createVar : String -> (t : TypeT) -> Cmd (Expr t)
+  (>>=) : Cmd a -> (a -> Cmd b) -> Cmd b
 
-data Code : TypeT -> Type where
-  C : Int -> List (String, TypeT) -> String -> Code a
+  bool : Bool -> Expr BoolT
+  bInt : Int -> (n : Nat) -> Expr (BitVecT n)
+  int : Int -> Expr IntT
+  real : Double -> Expr RealT
+  bAdd : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  bMul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  (==) : Expr a -> Expr a -> Expr BoolT
+  (&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
+  (||) : Expr BoolT -> Expr BoolT -> Expr BoolT
+  not : Expr BoolT -> Expr BoolT
+  ite : Expr BoolT -> Expr a -> Expr a -> Expr a
 
-Symantics Code where
+Smt where
+  Expr _ = String
+  Cmd _ = String
+
+  bool x = if x then "true" else "false"
+  (==) l r = "(= " ++ l ++ " " ++ r ++ ")"
+  not x = "(not " ++ x ++ ")"
+
+example0 : Smt => Expr BoolT
+example0 = (bool True) == (bool False)
