@@ -1,47 +1,63 @@
 module SMTLib
 
+import Data.Vect
+
+data NumTyp = IntT | RealT
+
 data TypeT : Type where
   BoolT : TypeT
-  IntT : TypeT
-  RealT : TypeT
+  NumT : NumTyp -> TypeT
   BitVecT : Nat -> TypeT
 
 Show TypeT where
   show BoolT = "Bool"
-  show IntT = "Int"
-  show RealT = "Real"
+  show (NumT IntT) = "Int"
+  show (NumT RealT) = "Real"
   show (BitVecT n) = "BitVec " ++ show n
 
 interface Smt where
   Expr : TypeT -> Type
   Cmd : Type -> Type
 
-  createVar : String -> (t : TypeT) -> Cmd (Expr t)
+  (>>=) : Cmd a -> (a -> Cmd b) -> Cmd b
+  pure : a -> Cmd a
+  declareVar : String -> (t : TypeT) -> Cmd (Expr t)
+  declareVars : Vect n String -> (t : TypeT) -> Cmd (Vect n (Expr t))
   assert : Expr BoolT -> Cmd ()
   checkSat : Cmd ()
   getModel : Cmd ()
-  (>>=) : Cmd a -> (a -> Cmd b) -> Cmd b
 
   bool : Bool -> Expr BoolT
   bv : Int -> (n : Nat) -> Expr (BitVecT n)
-  int : Int -> Expr IntT
-  real : Double -> Expr RealT
-  bvadd : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
-  bvmul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
-  (+) : Expr IntT -> Expr IntT -> Expr IntT
-  (*) : Expr IntT -> Expr IntT -> Expr IntT
+  --int : Int -> Expr (NumT IntT)
+  --real : Double -> Expr (NumT RealT)
+  --bvadd : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  --bvmul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  --bvand : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  --bvor : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  --bvnot : Expr (BitVecT n) -> Expr (BitVecT n)
+  --(+) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+  --(*) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
   (==) : Expr a -> Expr a -> Expr BoolT
-  (&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
-  (||) : Expr BoolT -> Expr BoolT -> Expr BoolT
+  --(&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
+  --(||) : Expr BoolT -> Expr BoolT -> Expr BoolT
   not : Expr BoolT -> Expr BoolT
-  ite : Expr BoolT -> Expr a -> Expr a -> Expr a
+  --ite : Expr BoolT -> Expr a -> Expr a -> Expr a
 
-Smt where
+[smt] Smt where
   Expr _ = String
   Cmd a = (a, String)
 
+  (>>=) (a, s) f = let (b, s') = f a in (b, s ++ "\n" ++ s')
+  pure x = (x, "")
+  declareVar x t = (x, "(declare-const " ++ x ++ " " ++ show t ++ ")")
+  declareVars [] t = pure []
+  declareVars (x :: xs) t = do x' <- declareVar x t
+                               xs' <- declareVars xs t
+                               pure $ x' :: xs'
   assert e = ((), "(assert " ++ e ++ ")")
   checkSat = ((), "(check-sat)")
+  getModel = ((), "(get-model)")
 
   bool x = if x then "true" else "false"
   bv v n = "(_ bv" ++ show v ++ " " ++ show n ++ ")"
@@ -56,3 +72,10 @@ example1 = (bv 1 8) == (bv 1 8)
 
 example2 : Smt => Cmd ()
 example2 = checkSat
+
+example3 : Smt => Cmd ()
+example3 = do x <- declareVar "x" BoolT
+              y <- declareVar "y" BoolT
+              assert $ x == y
+              checkSat
+              getModel
