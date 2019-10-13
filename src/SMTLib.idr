@@ -29,20 +29,20 @@ interface Smt where
 
   bool : Bool -> Expr BoolT
   bv : Int -> (n : Nat) -> Expr (BitVecT n)
-  --int : Int -> Expr (NumT IntT)
-  --real : Double -> Expr (NumT RealT)
-  --bvadd : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
-  --bvmul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
-  --bvand : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
-  --bvor : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
-  --bvnot : Expr (BitVecT n) -> Expr (BitVecT n)
-  --(+) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
-  --(*) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+  int : Int -> Expr (NumT IntT)
+  real : Double -> Expr (NumT RealT)
+  bvadd : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  bvmul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  bvand : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  bvor : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  bvnot : Expr (BitVecT n) -> Expr (BitVecT n)
+  (+) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+  (*) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
   (==) : Expr a -> Expr a -> Expr BoolT
-  --(&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
-  --(||) : Expr BoolT -> Expr BoolT -> Expr BoolT
+  (&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
+  (||) : Expr BoolT -> Expr BoolT -> Expr BoolT
   not : Expr BoolT -> Expr BoolT
-  --ite : Expr BoolT -> Expr a -> Expr a -> Expr a
+  ite : Expr BoolT -> Expr a -> Expr a -> Expr a
 
 [smt] Smt where
   Expr _ = String
@@ -61,8 +61,20 @@ interface Smt where
 
   bool x = if x then "true" else "false"
   bv v n = "(_ bv" ++ show v ++ " " ++ show n ++ ")"
+  int x = show x
+  real x = show x
+  bvadd l r = "(bvadd " ++ l ++ " " ++ r ++ ")"
+  bvmul l r = "(bvmul " ++ l ++ " " ++ r ++ ")"
+  bvand l r = "(bvand " ++ l ++ " " ++ r ++ ")"
+  bvor l r = "(bvor " ++ l ++ " " ++ r ++ ")"
+  bvnot x = "(bvnot " ++ x ++ ")"
+  (+) l r = "(+ " ++ l ++ " " ++ r ++ ")"
+  (*) l r = "(* " ++ l ++ " " ++ r ++ ")"
   (==) l r = "(= " ++ l ++ " " ++ r ++ ")"
+  (&&) l r = "(and " ++ l ++ " " ++ r ++ ")"
+  (||) l r = "(or " ++ l ++ " " ++ r ++ ")"
   not x = "(not " ++ x ++ ")"
+  ite p l r = "(if " ++ l ++ " " ++ r ++ ")"
 
 example0 : Smt => Expr BoolT
 example0 = (bool True) == (bool True)
@@ -76,6 +88,6 @@ example2 = checkSat
 example3 : Smt => Cmd ()
 example3 = do x <- declareVar "x" BoolT
               y <- declareVar "y" BoolT
-              assert $ x == y
+              assert $ not (x && y) == (not y || not y)
               checkSat
               getModel
