@@ -37,24 +37,44 @@ data Cmd : Type -> Type where
 
 declareVar : String -> (t : TypeT) -> Cmd (Expr t)
 declareVar v t = DeclareVarCmd v t
+
 declareVars : Vect n String -> (t : TypeT) -> Cmd (Vect n (Expr t))
 declareVars vs t = DeclareVarsCmd vs t
+
 assert : Expr BoolT -> Cmd ()
 assert e = AssertCmd e
+
 checkSat : Cmd ()
 checkSat = CheckSatCmd
+
 getModel : Cmd ()
 getModel = GetModelCmd
 
 data Smt : Type -> Type where
   Pure : a -> Smt a
-  (>>=) : Cmd a -> (a -> Smt b) -> Smt b
+  Bind : Cmd a -> (a -> Smt b) -> Smt b
+
+pure : a -> Smt a
+pure x = Pure x
+
+(>>=) : Cmd a -> (a -> Smt b) -> Smt b
+(>>=) cmd f = Bind cmd f
 
 end : Smt ()
 end = Pure ()
 
+compileCmd : Cmd a -> (a, String)
+
+compile : Smt () -> String
+compile (Pure ()) = ""
+compile (Bind cmd f) = let (a, s) = compileCmd cmd in
+                       let s' = compile $ f a in
+                       s ++ "\n" ++ s'
+
 example0 : Expr BoolT
 example0 = (bool True) && (bool True)
+
+
 
 --example1 : Expr BoolT
 --example1 = (bv 1 8) == (bv 1 8)
