@@ -1,4 +1,4 @@
-module SMTLib
+module SMTLibFinal
 
 import Data.Vect
 
