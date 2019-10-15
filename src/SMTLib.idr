@@ -17,16 +17,72 @@ Show TypeT where
 
 
 data Expr : TypeT -> Type where
-  EqualExpr : Expr a -> Expr a -> Expr BoolT
+  VarExpr : String -> (t : TypeT) -> Expr t
   BoolExpr : Bool -> Expr BoolT
+  BvExpr : Int -> (n : Nat) -> Expr (BitVecT n)
+  BvAddExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvMulExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvAndExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvOrExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvNotExpr : Expr (BitVecT n) -> Expr (BitVecT n)
+  IntExpr : Int -> Expr (NumT IntT)
+  RealExpr : Double -> Expr (NumT RealT)
+  AddExpr : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+  MulExpr : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+  EqualExpr : Expr a -> Expr a -> Expr BoolT
   AndExpr : Expr BoolT -> Expr BoolT -> Expr BoolT
+  OrExpr : Expr BoolT -> Expr BoolT -> Expr BoolT
+  NotExpr : Expr BoolT -> Expr BoolT
+  IteExpr : Expr BoolT -> Expr a -> Expr a -> Expr a
+
+
+bool : Bool -> Expr BoolT
+bool x = BoolExpr x
+
+bv : Int -> (n : Nat) -> Expr (BitVecT n)
+bv x n = BvExpr x n
+
+int : Int -> Expr (NumT IntT)
+int x = IntExpr x
+
+real : Double -> Expr (NumT RealT)
+real x = RealExpr x
+
+bvadd : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvadd l r = BvAddExpr l r
+
+bvmul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvmul l r = BvMulExpr l r
+
+bvand : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvand l r = BvAndExpr l r
+
+bvor : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvor l r = BvOrExpr l r
+
+bvnot : Expr (BitVecT n) -> Expr (BitVecT n)
+bvnot x = BvNotExpr x
+
+(+) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+(+) l r = AddExpr l r
+
+(*) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+(*) l r = MulExpr l r
 
 (==) : Expr a -> Expr a -> Expr BoolT
 (==) l r = EqualExpr l r
-bool : Bool -> Expr BoolT
-bool x = BoolExpr x
+
 (&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
 (&&) l r = AndExpr l r
+
+(||) : Expr BoolT -> Expr BoolT -> Expr BoolT
+(||) l r = OrExpr l r
+
+not : Expr BoolT -> Expr BoolT
+not x = NotExpr x
+
+ite : Expr BoolT -> Expr a -> Expr a -> Expr a
+ite p l r = IteExpr p l r
 
 data Cmd : Type -> Type where
   DeclareVarCmd : String -> (t : TypeT) -> Cmd (Expr t)
@@ -63,21 +119,44 @@ pure x = Pure x
 end : Smt ()
 end = Pure ()
 
+compileExpr : Expr t -> String
+compileExpr (VarExpr x t) = x
+compileExpr (BoolExpr x) = if x then "true" else "false"
+compileExpr (BvExpr x n) = "(_ bv" ++ show x ++ " " ++ show n ++ ")"
+compileExpr (IntExpr x) = show x
+compileExpr (RealExpr x) = show x
+compileExpr (BvAddExpr l r) = "(bvadd " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvMulExpr l r) = "(bvmul " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvAndExpr l r) = "(bvand " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvOrExpr l r) = "(bvor " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvNotExpr x) = "(bnot " ++ compileExpr x ++ ")"
+compileExpr (AddExpr l r) = "(+ " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (MulExpr l r) = "(* " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (EqualExpr l r) = "(= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (AndExpr l r) = "(and " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (OrExpr l r) = "(or " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (NotExpr x) = "(not " ++ compileExpr x ++ ")"
+compileExpr (IteExpr p l r) = "(if " ++ compileExpr p ++ " " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+
 compileCmd : Cmd a -> (a, String)
+compileCmd (DeclareVarCmd x t) = (VarExpr x t, "(declare-const " ++ x ++ " " ++ show t ++ ")")
+compileCmd (DeclareVarsCmd xs t) = (map (\x => VarExpr x t) xs,
+                                    (unlines . toList . map (\x => "(declare-const " ++ x ++ " " ++ show t ++ ")")) xs)
+compileCmd (AssertCmd e) = ((), "(assert " ++ compileExpr e ++ ")")
+compileCmd CheckSatCmd = ((), "(check-sat)")
+compileCmd GetModelCmd = ((), "(get-model)")
 
 compile : Smt () -> String
 compile (Pure ()) = ""
 compile (Bind cmd f) = let (a, s) = compileCmd cmd in
                        let s' = compile $ f a in
-                       s ++ "\n" ++ s'
+                       unlines [s, s']
 
 example0 : Expr BoolT
 example0 = (bool True) && (bool True)
 
-
-
---example1 : Expr BoolT
---example1 = (bv 1 8) == (bv 1 8)
+example1 : Expr BoolT
+example1 = (bv 1 8) == (bv 1 8)
 
 example2 : Cmd ()
 example2 = checkSat
@@ -92,7 +171,10 @@ example3 = do x <- declareVar "x" BoolT
 
 example4 : Smt ()
 example4 = do [x, y] <- declareVars ["x", "y"] BoolT
-              assert $ x && y
+              assert $ not (x && y) == (not y || not y)
               checkSat
               getModel
               end
+
+print : Smt () -> IO ()
+print smt = putStrLn $ compile smt

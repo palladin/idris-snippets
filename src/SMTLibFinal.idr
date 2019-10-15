@@ -74,7 +74,7 @@ interface Smt where
   (&&) l r = "(and " ++ l ++ " " ++ r ++ ")"
   (||) l r = "(or " ++ l ++ " " ++ r ++ ")"
   not x = "(not " ++ x ++ ")"
-  ite p l r = "(if " ++ l ++ " " ++ r ++ ")"
+  ite p l r = "(if " ++ p ++ " " ++ l ++ " " ++ r ++ ")"
 
 example0 : Smt => Expr BoolT
 example0 = (bool True) == (bool True)
