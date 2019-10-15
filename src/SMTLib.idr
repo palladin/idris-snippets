@@ -86,7 +86,7 @@ ite p l r = IteExpr p l r
 
 data Cmd : Type -> Type where
   DeclareVarCmd : String -> (t : TypeT) -> Cmd (Expr t)
-  DeclareVarsCmd : Vect n String -> (t : TypeT) -> Cmd (Vect n (Expr t))
+  DeclareVarsCmd : Traversable f => f String -> (t : TypeT) -> Cmd (f (Expr t))
   AssertCmd : Expr BoolT -> Cmd ()
   CheckSatCmd : Cmd ()
   GetModelCmd : Cmd ()
@@ -94,7 +94,7 @@ data Cmd : Type -> Type where
 declareVar : String -> (t : TypeT) -> Cmd (Expr t)
 declareVar v t = DeclareVarCmd v t
 
-declareVars : Vect n String -> (t : TypeT) -> Cmd (Vect n (Expr t))
+declareVars : Traversable f => f String -> (t : TypeT) -> Cmd (f (Expr t))
 declareVars vs t = DeclareVarsCmd vs t
 
 assert : Expr BoolT -> Cmd ()
@@ -170,8 +170,8 @@ example3 = do x <- declareVar "x" BoolT
               end
 
 example4 : Smt ()
-example4 = do [x, y] <- declareVars ["x", "y"] BoolT
-              assert $ not (x && y) == (not y || not y)
+example4 = do [x, y] <- declareVars {f = Vect 2} ["x", "y"] BoolT
+              assert $ not (x && y) == (not x || not y)
               checkSat
               getModel
               end

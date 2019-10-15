@@ -88,6 +88,6 @@ example2 = checkSat
 example3 : Smt => Cmd ()
 example3 = do x <- declareVar "x" BoolT
               y <- declareVar "y" BoolT
-              assert $ not (x && y) == (not y || not y)
+              assert $ not (x && y) == (not x || not y)
               checkSat
               getModel
