@@ -7,9 +7,21 @@ import Data.Matrix.Numeric
 
 %access public export
 
-data Tensor : List Nat -> Type -> Type where
+data Tensor : Vect n Nat -> Type -> Type where
   Scalar : a -> Tensor [] a
   Prism : Tensor ns (Vect n a) -> Tensor (n :: ns) a
+
+toVectT : Vect n Nat -> Type -> Type
+toVectT [] a = a
+toVectT (x :: xs) a = toVectT xs (Vect x a)
+
+toTensor : toVectT xs a -> Tensor xs a
+toTensor {xs = []} v = Scalar v
+toTensor {xs = (x :: xs)} v = Prism (toTensor v)
+
+toVect : Tensor xs a -> toVectT xs a
+toVect {xs = []} (Scalar v) = v
+toVect {xs = (x :: xs)} (Prism v) = toVect v
 
 Functor (Tensor ns) where
   map f (Scalar x) = Scalar (f x)

@@ -5,13 +5,6 @@ import src.SMTLib
 import src.Tensor
 
 
-
-toTensor : Vect n (Vect n (Vect n (Vect n a))) -> Tensor [n, n, n, n] a
-toTensor xs = Prism (Prism (Prism (Prism (Scalar xs))))
-
-toVect : Tensor [n, n, n, n] a -> Vect n (Vect n (Vect n (Vect n a)))
-toVect (Prism (Prism (Prism (Prism (Scalar xs))))) = xs
-
 puzzle :  Vect 3 (Vect 3 (Vect 3 (Vect 3 Int)))
 puzzle = [ [matrix00, matrix01, matrix02],
            [matrix10, matrix11, matrix12],
