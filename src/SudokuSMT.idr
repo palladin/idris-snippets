@@ -5,10 +5,11 @@ import src.SMTLib
 import src.Tensor
 
 
-puzzle :  Vect 3 (Vect 3 (Vect 3 (Vect 3 Int)))
-puzzle = [ [matrix00, matrix01, matrix02],
-           [matrix10, matrix11, matrix12],
-           [matrix20, matrix21, matrix22] ]
+puzzle :  Tensor [3, 3, 3, 3] Int
+puzzle = toTensor
+           [ [matrix00, matrix01, matrix02],
+             [matrix10, matrix11, matrix12],
+             [matrix20, matrix21, matrix22] ]
     where
       matrix00 : Vect 3 (Vect 3 Int)
       matrix00 = [ [5, 3, 0],
@@ -47,8 +48,9 @@ puzzle = [ [matrix00, matrix01, matrix02],
                    [0, 0, 0],
                    [0, 0, 0] ]
 
-vars : Vect 3 (Vect 3 (Vect 3 (Vect 3 String)))
-vars = [ [ [ ["x_" ++ show i0 ++ "_" ++ show i1 ++ "_" ++ show i2 ++ "_" ++ show i3
+vars : Tensor [3, 3, 3, 3] String
+vars = toTensor
+        [ [ [ ["x_" ++ show i0 ++ "_" ++ show i1 ++ "_" ++ show i2 ++ "_" ++ show i3
              | i3 <- [0, 1, 2]]
              | i2 <- [0, 1, 2]]
              | i1 <- [0, 1, 2]]
@@ -59,6 +61,6 @@ cells ts with (toVect ts)
   cells ts | xs = ?vars_rhs
 
 sudoku : Smt ()
-sudoku = do vars <- declareVars (toTensor vars) (NumT IntT)
+sudoku = do vars <- declareVars vars (NumT IntT)
             assert $ cells vars
             end
