@@ -2,6 +2,8 @@ module SMTLib
 
 import Data.Vect
 
+%access public export
+
 data NumTyp = IntT | RealT
 
 data TypeT : Type where
@@ -30,6 +32,7 @@ data Expr : TypeT -> Type where
   AddExpr : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
   MulExpr : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
   EqualExpr : Expr a -> Expr a -> Expr BoolT
+  LessOrEqualExpr : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
   AndExpr : Expr BoolT -> Expr BoolT -> Expr BoolT
   OrExpr : Expr BoolT -> Expr BoolT -> Expr BoolT
   NotExpr : Expr BoolT -> Expr BoolT
@@ -71,6 +74,9 @@ bvnot x = BvNotExpr x
 
 (==) : Expr a -> Expr a -> Expr BoolT
 (==) l r = EqualExpr l r
+
+(<=) : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
+(<=) l r = EqualExpr l r
 
 (&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
 (&&) l r = AndExpr l r
@@ -133,6 +139,7 @@ compileExpr (BvNotExpr x) = "(bnot " ++ compileExpr x ++ ")"
 compileExpr (AddExpr l r) = "(+ " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (MulExpr l r) = "(* " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (EqualExpr l r) = "(= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (LessOrEqualExpr l r) = "(<= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (AndExpr l r) = "(and " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (OrExpr l r) = "(or " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (NotExpr x) = "(not " ++ compileExpr x ++ ")"

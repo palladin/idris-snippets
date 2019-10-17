@@ -5,6 +5,8 @@ module Tensor
 import Data.Vect
 import Data.Matrix.Numeric
 
+%access public export
+
 data Tensor : List Nat -> Type -> Type where
   Scalar : a -> Tensor [] a
   Prism : Tensor ns (Vect n a) -> Tensor (n :: ns) a
