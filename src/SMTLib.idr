@@ -32,11 +32,13 @@ data Expr : TypeT -> Type where
   AddExpr : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
   MulExpr : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
   EqualExpr : Expr a -> Expr a -> Expr BoolT
+  DistinctExpr : Vect n (Expr a) -> Expr BoolT
   LessOrEqualExpr : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
-  AndExpr : Expr BoolT -> Expr BoolT -> Expr BoolT
-  OrExpr : Expr BoolT -> Expr BoolT -> Expr BoolT
+  AndExpr : Vect n (Expr BoolT) -> Expr BoolT
+  OrExpr : Vect n (Expr BoolT) -> Expr BoolT
   NotExpr : Expr BoolT -> Expr BoolT
   IteExpr : Expr BoolT -> Expr a -> Expr a -> Expr a
+
 
 
 bool : Bool -> Expr BoolT
@@ -75,14 +77,23 @@ bvnot x = BvNotExpr x
 (==) : Expr a -> Expr a -> Expr BoolT
 (==) l r = EqualExpr l r
 
+distinct : Vect n (Expr a) -> Expr BoolT
+distinct xs = DistinctExpr xs
+
 (<=) : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
-(<=) l r = EqualExpr l r
+(<=) l r = LessOrEqualExpr l r
 
 (&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
-(&&) l r = AndExpr l r
+(&&) l r = AndExpr [l, r]
 
 (||) : Expr BoolT -> Expr BoolT -> Expr BoolT
-(||) l r = OrExpr l r
+(||) l r = OrExpr [l, r]
+
+and : Vect n (Expr BoolT) -> Expr BoolT
+and xs = AndExpr xs
+
+or : Vect n (Expr BoolT) -> Expr BoolT
+or xs = OrExpr xs
 
 not : Expr BoolT -> Expr BoolT
 not x = NotExpr x
@@ -139,9 +150,10 @@ compileExpr (BvNotExpr x) = "(bnot " ++ compileExpr x ++ ")"
 compileExpr (AddExpr l r) = "(+ " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (MulExpr l r) = "(* " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (EqualExpr l r) = "(= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (DistinctExpr xs) = "(distinct " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (LessOrEqualExpr l r) = "(<= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
-compileExpr (AndExpr l r) = "(and " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
-compileExpr (OrExpr l r) = "(or " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (AndExpr xs) = "(and " ++ (unlines . toList . map compileExpr) xs ++ ")"
+compileExpr (OrExpr xs) = "(or " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (NotExpr x) = "(not " ++ compileExpr x ++ ")"
 compileExpr (IteExpr p l r) = "(if " ++ compileExpr p ++ " " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 
