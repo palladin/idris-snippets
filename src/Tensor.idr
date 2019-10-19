@@ -23,6 +23,10 @@ toVect : Tensor xs a -> toVectT xs a
 toVect {xs = []} (Scalar v) = v
 toVect {xs = (x :: xs)} (Prism v) = toVect v
 
+tabulate : (Fin n -> a) -> Vect n a
+tabulate {n = Z} _ = []
+tabulate {n = S k} f = f FZ :: tabulate (f . FS)
+
 Functor (Tensor ns) where
   map f (Scalar x) = Scalar (f x)
   map f (Prism x) = Prism (map (map f) x)
