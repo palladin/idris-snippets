@@ -27,22 +27,26 @@ toPos {n} fin with (finToNat fin)
   toPos {n} fin | Z = First
   toPos {n} fin | n' = if n == (S n') then Last else Middle
 
-collect : Fin n -> Fin m -> Vect n (Vect m Int) -> Expr BoolT
+collect : Fin n -> Fin m -> Vect n (Vect m (Expr (NumT IntT))) -> Expr BoolT
 collect {n} {m} fn fm xss with (toPos fn, toPos fm)
-  collect {n} {m} fn fm xss | (First, First) = let r = index fn fm (map (shiftLeft 0) xss) in
-                                               let d = index fn fm (shiftLeft (replicate _ 0) xss) in
-                                               let dr = index fn fm (map (shiftLeft 0) (shiftLeft (replicate _ 0) xss)) in
-                                               and [((int r) == (int d)), ((int dr) == (int dr))]
-  collect {n} {m} fn fm xss | (Last, Last) = let l = index fn fm (map (shiftRight 0) xss) in
-                                             let u = index fn fm (shiftRight (replicate _ 0) xss) in
-                                             let ul = index fn fm (map (shiftRight 0) (shiftRight (replicate _ 0) xss)) in
-                                             and [((int l) == (int u)), ((int ul) == (int ul))]
-  collect {n} {m} fn fm xss | (_, _) = let r = index fn fm (map (shiftLeft 0) xss) in
-                                       let l = index fn fm (map (shiftRight 0) xss) in
-                                       let u = index fn fm (shiftRight (replicate _ 0) xss) in
-                                       let d = index fn fm (shiftLeft (replicate _ 0) xss) in
-                                       let ul = index fn fm (map (shiftRight 0) (shiftRight (replicate _ 0) xss)) in
-                                       let ur = index fn fm (map (shiftLeft 0) (shiftRight (replicate _ 0) xss)) in
-                                       let dl = index fn fm (map (shiftRight 0) (shiftLeft (replicate _ 0) xss)) in
-                                       let dr = index fn fm (map (shiftLeft 0) (shiftLeft (replicate _ 0) xss)) in
-                                       and [((int l) == (int r)), ((int u) == (int d)), ((int ul) == (int ur)), ((int dl) == (int dr))]
+  collect {n} {m} fn fm xss | (First, First) = let r = index fn fm (map (shiftLeft (int 0)) xss) in
+                                               let d = index fn fm (shiftLeft (replicate _ (int 0)) xss) in
+                                               let dr = index fn fm (map (shiftLeft (int 0)) (shiftLeft (replicate _ (int 0)) xss)) in
+                                               add [r, d, dr] == (int 0)
+  collect {n} {m} fn fm xss | (Last, Last) = let l = index fn fm (map (shiftRight (int 0)) xss) in
+                                             let u = index fn fm (shiftRight (replicate _ (int 0)) xss) in
+                                             let ul = index fn fm (map (shiftRight (int 0)) (shiftRight (replicate _ (int 0)) xss)) in
+                                             add [l, u, ul] == (int 0)
+  collect {n} {m} fn fm xss | (_, _) = let r = index fn fm (map (shiftLeft (int 0)) xss) in
+                                       let l = index fn fm (map (shiftRight (int 0)) xss) in
+                                       let u = index fn fm (shiftRight (replicate _ (int 0)) xss) in
+                                       let d = index fn fm (shiftLeft (replicate _ (int 0)) xss) in
+                                       let ul = index fn fm (map (shiftRight (int 0)) (shiftRight (replicate _ (int 0)) xss)) in
+                                       let ur = index fn fm (map (shiftLeft (int 0)) (shiftRight (replicate _ (int 0)) xss)) in
+                                       let dl = index fn fm (map (shiftRight (int 0)) (shiftLeft (replicate _ (int 0)) xss)) in
+                                       let dr = index fn fm (map (shiftLeft (int 0)) (shiftLeft (replicate _ (int 0)) xss)) in
+                                       add [r, l, u, d, ul, ur, dl, dr] == (int 0)
+
+
+vars : Vect 3 (Vect 3 String)
+vars = [ [ "x_" ++ show i0 ++ "_" ++ show i1 | i1 <- [0, 1, 2]] | i0 <- [0, 1, 2]]

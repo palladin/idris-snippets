@@ -29,8 +29,8 @@ data Expr : TypeT -> Type where
   BvNotExpr : Expr (BitVecT n) -> Expr (BitVecT n)
   IntExpr : Int -> Expr (NumT IntT)
   RealExpr : Double -> Expr (NumT RealT)
-  AddExpr : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
-  MulExpr : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+  AddExpr : Vect n (Expr (NumT a)) -> Expr (NumT a)
+  MulExpr : Vect n (Expr (NumT a)) -> Expr (NumT a)
   EqualExpr : Expr a -> Expr a -> Expr BoolT
   DistinctExpr : Vect n (Expr a) -> Expr BoolT
   LessOrEqualExpr : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
@@ -69,10 +69,16 @@ bvnot : Expr (BitVecT n) -> Expr (BitVecT n)
 bvnot x = BvNotExpr x
 
 (+) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
-(+) l r = AddExpr l r
+(+) l r = AddExpr [l, r]
+
+add : Vect n (Expr (NumT a)) -> Expr (NumT a)
+add xs = AddExpr xs
 
 (*) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
-(*) l r = MulExpr l r
+(*) l r = MulExpr [l, r]
+
+mul : Vect n (Expr (NumT a)) -> Expr (NumT a)
+mul xs = MulExpr xs
 
 (==) : Expr a -> Expr a -> Expr BoolT
 (==) l r = EqualExpr l r
@@ -147,8 +153,8 @@ compileExpr (BvMulExpr l r) = "(bvmul " ++ compileExpr l ++ " " ++ compileExpr r
 compileExpr (BvAndExpr l r) = "(bvand " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvOrExpr l r) = "(bvor " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvNotExpr x) = "(bnot " ++ compileExpr x ++ ")"
-compileExpr (AddExpr l r) = "(+ " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
-compileExpr (MulExpr l r) = "(* " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (AddExpr xs) = "(+ " ++ (unlines . toList . map compileExpr) xs ++ ")"
+compileExpr (MulExpr xs) = "(* " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (EqualExpr l r) = "(= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (DistinctExpr xs) = "(distinct " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (LessOrEqualExpr l r) = "(<= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
