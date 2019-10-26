@@ -17,6 +17,15 @@ shiftLeft {n = S n} e (x :: xs) = replace {P = (\x => Vect x a)} (plusCommutativ
 shiftRight : a -> Vect n a -> Vect n a
 shiftRight e xs = reverse $ shiftLeft e $ reverse xs
 
+data Dir = Left | Right | Up | Down
+
+shift : List Dir -> a -> Vect n (Vect m a) -> Vect n (Vect m a)
+shift [] e xss = xss
+shift (Left :: ds) e xss = shift ds e (map (shiftLeft e) xss)
+shift (Right :: ds) e xss = shift ds e (map (shiftLeft e) xss)
+shift (Up :: ds) e xss = shift ds e (shiftLeft (replicate _ e) xss)
+shift (Down :: ds) e xss = shift ds e (shiftRight (replicate _ e) xss)
+
 index : Fin n -> Fin m -> Vect n (Vect m a) -> a
 index n m xss = index m (index n xss)
 
@@ -28,23 +37,23 @@ toPos {n} fin with (finToNat fin)
   toPos {n} fin | n' = if n == (S n') then Last else Middle
 
 collect : Fin n -> Fin m -> Vect n (Vect m (Expr (NumT IntT))) -> Expr BoolT
-collect {n} {m} fn fm xss with (toPos fn, toPos fm)
-  collect {n} {m} fn fm xss | (First, First) = let r = index fn fm (map (shiftLeft (int 0)) xss) in
-                                               let d = index fn fm (shiftLeft (replicate _ (int 0)) xss) in
-                                               let dr = index fn fm (map (shiftLeft (int 0)) (shiftLeft (replicate _ (int 0)) xss)) in
-                                               add [r, d, dr] == (int 0)
-  collect {n} {m} fn fm xss | (Last, Last) = let l = index fn fm (map (shiftRight (int 0)) xss) in
-                                             let u = index fn fm (shiftRight (replicate _ (int 0)) xss) in
-                                             let ul = index fn fm (map (shiftRight (int 0)) (shiftRight (replicate _ (int 0)) xss)) in
-                                             add [l, u, ul] == (int 0)
-  collect {n} {m} fn fm xss | (_, _) = let r = index fn fm (map (shiftLeft (int 0)) xss) in
-                                       let l = index fn fm (map (shiftRight (int 0)) xss) in
-                                       let u = index fn fm (shiftRight (replicate _ (int 0)) xss) in
-                                       let d = index fn fm (shiftLeft (replicate _ (int 0)) xss) in
-                                       let ul = index fn fm (map (shiftRight (int 0)) (shiftRight (replicate _ (int 0)) xss)) in
-                                       let ur = index fn fm (map (shiftLeft (int 0)) (shiftRight (replicate _ (int 0)) xss)) in
-                                       let dl = index fn fm (map (shiftRight (int 0)) (shiftLeft (replicate _ (int 0)) xss)) in
-                                       let dr = index fn fm (map (shiftLeft (int 0)) (shiftLeft (replicate _ (int 0)) xss)) in
+collect n m xss with (toPos n, toPos m)
+  collect n m xss | (First, First) = let r = index n m $ shift [Left] (int 0) xss in
+                                     let d = index n m $ shift [Up] (int 0) xss in
+                                     let dr = index n m $ shift [Up, Left] (int 0) xss in
+                                     add [r, d, dr] == (int 0)
+  collect n m xss | (Last, Last) = let l = index n m $ shift [Right] (int 0) xss in
+                                   let u = index n m $ shift [Down] (int 0) xss in
+                                   let ul = index n m $ shift [Down, Right] (int 0) xss in
+                                   add [l, u, ul] == (int 0)
+  collect n m xss | (_, _) = let r = index n m $ shift [Left] (int 0) xss in
+                             let l = index n m $ shift [Right] (int 0) xss in
+                             let u = index n m $ shift [Down] (int 0) xss in
+                             let d = index n m $ shift [Up] (int 0) xss in
+                             let ul = index n m $ shift [Down, Right] (int 0) xss in
+                             let ur = index n m $ shift [Down, Left] (int 0) xss in
+                             let dl = index n m $ shift [Up, Right] (int 0) xss in
+                             let dr = index n m $ shift [Up, Left] (int 0) xss in
                                        add [r, l, u, d, ul, ur, dl, dr] == (int 0)
 
 
