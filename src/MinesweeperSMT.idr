@@ -46,6 +46,38 @@ collect n m v xss with (toPos n, toPos m)
                                      let u = index n m $ shift [Down] (int 0) xss in
                                      let ul = index n m $ shift [Down, Right] (int 0) xss in
                                      add [l, u, ul] == (int v)
+  collect n m v xss | (First, Last) = let l = index n m $ shift [Right] (int 0) xss in
+                                      let d = index n m $ shift [Up] (int 0) xss in
+                                      let dl = index n m $ shift [Up, Right] (int 0) xss in
+                                      add [l, d, dl] == (int v)
+  collect n m v xss | (Last, First) = let r = index n m $ shift [Left] (int 0) xss in
+                                      let u = index n m $ shift [Down] (int 0) xss in
+                                      let ur = index n m $ shift [Down, Left] (int 0) xss in
+                                      add [r, u, ur] == (int v)
+  collect n m v xss | (First, _) = let r = index n m $ shift [Left] (int 0) xss in
+                                   let l = index n m $ shift [Right] (int 0) xss in
+                                   let d = index n m $ shift [Up] (int 0) xss in
+                                   let dl = index n m $ shift [Up, Right] (int 0) xss in
+                                   let dr = index n m $ shift [Up, Left] (int 0) xss in
+                                   add [r, l, d, dl, dr] == (int v)
+  collect n m v xss | (Last, _) = let r = index n m $ shift [Left] (int 0) xss in
+                                  let l = index n m $ shift [Right] (int 0) xss in
+                                  let u = index n m $ shift [Down] (int 0) xss in
+                                  let ul = index n m $ shift [Down, Right] (int 0) xss in
+                                  let ur = index n m $ shift [Down, Left] (int 0) xss in
+                                  add [r, l, u, ul, ur] == (int v)
+  collect n m v xss | (_, First) = let r = index n m $ shift [Left] (int 0) xss in
+                                   let u = index n m $ shift [Down] (int 0) xss in
+                                   let ul = index n m $ shift [Down, Left] (int 0) xss in
+                                   let d = index n m $ shift [Up] (int 0) xss in
+                                   let dr = index n m $ shift [Up, Left] (int 0) xss in
+                                   add [r, u, d, ul, dr] == (int v)
+  collect n m v xss | (_, Last) = let l = index n m $ shift [Right] (int 0) xss in
+                                  let u = index n m $ shift [Down] (int 0) xss in
+                                  let ul = index n m $ shift [Down, Right] (int 0) xss in
+                                  let d = index n m $ shift [Up] (int 0) xss in
+                                  let dl = index n m $ shift [Up, Right] (int 0) xss in
+                                  add [l, u, d, ul, dl] == (int v)
   collect n m v xss | (_, _) = let r = index n m $ shift [Left] (int 0) xss in
                                let l = index n m $ shift [Right] (int 0) xss in
                                let u = index n m $ shift [Down] (int 0) xss in
