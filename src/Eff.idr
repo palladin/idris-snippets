@@ -2,6 +2,8 @@ module Eff
 
 -- The Eff monad, based on http://okmij.org/ftp/Haskell/extensible/more.pdf
 
+%access public export
+
 data Exists : List a -> a -> Type where
     Here : Exists (x :: xs) x
     There : Exists xs x -> Exists (y :: xs) x
@@ -15,16 +17,19 @@ data Eff : List (Type -> Type) -> Type -> Type where
 (>>=) (Pure x) f = f x
 (>>=) (Bind {e} x g) f = Bind {e} x (\a => (g a) >>= f)
 
+send : {auto e : Exists xs eff} -> eff a -> Eff xs a
+send {e} eff = Bind {e} eff Pure
+
 -- State effect
 data State : (s : Type) -> Type -> Type where
   Get : State s s
   Put : s -> State s ()
 
 get : {auto e : Exists xs (State s)} -> Eff xs s
-get {e} = Bind {e} Get Pure
+get {e} = send Get
 
 put : {auto e : Exists xs (State s)} -> s -> Eff xs ()
-put {e} s = Bind {e} (Put s) Pure
+put {e} s = send (Put s)
 
 -- Reader effect
 data Reader : (e : Type) -> Type -> Type where
