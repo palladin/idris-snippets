@@ -97,3 +97,6 @@ sudoku = do vars <- declareVars vars (NumT IntT)
             checkSat
             getModel
             end
+
+test : IO ()
+test = print sudoku
