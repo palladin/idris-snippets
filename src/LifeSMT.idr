@@ -5,14 +5,21 @@ import src.SMTLib
 import src.Tensor
 
 
-pattern : Vect 7 (Vect 15 Int)
-pattern = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-           [0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0],
-           [0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-           [0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0],
-           [0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-           [0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0],
-           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+pattern0 : Vect 6 (Vect 6 Int)
+pattern0 = [[0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0],
+            [0, 1, 1, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]]
+
+pattern1 : Vect 6 (Vect 6 Int)
+pattern1 = [[0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]]
 
 
 shiftLeft : a -> Vect n a -> Vect n a
@@ -62,13 +69,49 @@ countNeighborhoods n m xss with (toPos n, toPos m)
                                             lookup n m [Up] xss, lookup n m [Down, Right] xss, lookup n m [Down, Left] xss,
                                             lookup n m [Up, Right] xss, lookup n m [Up, Left] xss]
 
-initBoard : Tensor [7, 15] String
+rules : Vect n (Vect m (Expr (NumT IntT))) -> Vect n (Vect m (Expr (NumT IntT))) -> Vect n (Vect m (Expr (NumT IntT))) -> Expr BoolT
+rules counters fromBoard toBoard = and $ concat $ tabulate (\i0 => tabulate (\i1 => rule i0 i1 counters fromBoard toBoard))
+  where
+    rule : Fin n -> Fin m -> Vect n (Vect m (Expr (NumT IntT))) -> Vect n (Vect m (Expr (NumT IntT))) -> Vect n (Vect m (Expr (NumT IntT))) -> Expr BoolT
+    rule n m counters fromBoard toBoard = let c = index n m counters in
+                                          let eqc = countNeighborhoods n m fromBoard == c in
+                                          let from = index n m fromBoard in
+                                          let eqf = from == (int 0) || from == (int 1) in
+                                          let to = index n m toBoard in
+                                          let eqt = to == (int 0) || to == (int 1) in
+                                          let r = ite (from == (int 1))
+                                                    (ite (c == (int 0) || c == (int 1))
+                                                      (to == (int 0))
+                                                      (ite (or [c == (int 4), c == (int 5), c == (int 6),
+                                                                c == (int 7), c == (int 8)])
+                                                        (to == (int 0))
+                                                        (ite (or [c == (int 2), c == (int 3)])
+                                                          (to == (int 1))
+                                                          (bool False))))
+                                                    (ite (c == (int 3))
+                                                      (to == (int 1))
+                                                      (to == (int 0))) in
+                                          and [eqc, eqf, eqt, r]
+
+validPattern : Vect n (Vect m Int) -> Vect n (Vect m (Expr (NumT IntT))) -> Expr BoolT
+validPattern pattern board = and $ concat $ tabulate (\i0 => tabulate (\i1 => index i0 i1 board == (int $ index i0 i1 pattern)))
+
+initBoard : Tensor [6, 6] String
 initBoard = toTensor $ tabulate (\i0 => tabulate (\i1 => "x_" ++ show (finToNat i0) ++ "_" ++ show (finToNat i1)))
+
+finalBoard : Tensor [6, 6] String
+finalBoard = toTensor $ tabulate (\i0 => tabulate (\i1 => "y_" ++ show (finToNat i0) ++ "_" ++ show (finToNat i1)))
+
+counters : Tensor [6, 6] String
+counters = toTensor $ tabulate (\i0 => tabulate (\i1 => "c_" ++ show (finToNat i0) ++ "_" ++ show (finToNat i1)))
 
 
 solver : Smt ()
 solver = do initBoard <- declareVars initBoard (NumT IntT)
-            assert $ countNeighborhoods 0 0 (toVect initBoard) == (int 0)
+            finalBoard <- declareVars finalBoard (NumT IntT)
+            counters <- declareVars counters (NumT IntT)
+            assert $ rules (toVect counters) (toVect initBoard) (toVect finalBoard)
+            assert $ validPattern pattern1 (toVect finalBoard)
             checkSat
             getModel
             end
