@@ -1,6 +1,7 @@
 module SMTLib
 
 import Data.Vect
+import System
 
 %access public export
 
@@ -201,5 +202,10 @@ example4 = do [x, y] <- declareVars {f = Vect 2} ["x", "y"] BoolT
               getModel
               end
 
-print : Smt () -> IO ()
-print smt = putStrLn $ compile smt
+exec : String -> String -> IO Int
+exec input output = system $ "z3 -smt2 " ++ input ++ " > " ++ output
+
+run : Smt () -> IO ()
+run smt = do _ <- writeFile "input.smt2" $ compile smt
+             _ <- exec "input.smt2" "output.smt2"
+             pure ()
