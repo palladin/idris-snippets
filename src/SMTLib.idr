@@ -205,7 +205,61 @@ example4 = do [x, y] <- declareVars {f = Vect 2} ["x", "y"] BoolT
 exec : String -> String -> IO Int
 exec input output = system $ "z3 -smt2 " ++ input ++ " > " ++ output
 
-run : Smt () -> IO ()
-run smt = do _ <- writeFile "input.smt2" $ compile smt
+data Result = Sat | UnSat | Unknown
+
+Model : Type
+Model = List (String, String)
+
+parseResult : List String -> Maybe (Result, List String)
+parseResult ("sat" :: "(model " :: xs) = Just (Sat, xs)
+parseResult ("unsat" :: xs) = Just (UnSat, xs)
+parseResult ("unknown" :: xs) = Just (Unknown, xs)
+parseResult _ = Nothing
+
+parseVar : List Char -> Maybe (List Char)
+parseVar ('(' :: 'd' :: 'e' :: 'f' :: 'i' :: 'n' :: 'e' :: '-' :: 'f' :: 'u' :: 'n' :: ' ' :: xs) = parseVar' xs
+  where
+    parseVar' : List Char -> Maybe (List Char)
+    parseVar' (' ' :: xs) = Just []
+    parseVar' (x :: xs) = do xs <- parseVar' xs
+                             Just (x :: xs)
+    parseVar' _ = Nothing
+parseVar _ = Nothing
+
+
+parseValue : List Char -> Maybe (List Char)
+parseValue [] = Just []
+parseValue [')'] = Just []
+parseValue [_] = Nothing
+parseValue (x :: xs) = do xs <- parseValue xs
+                          Just (x :: xs)
+
+
+parseModel : List String -> Maybe (Model, List String)
+parseModel [")"] = Just ([], [])
+parseModel (x :: y :: xs) = do (model, xs) <- parseModel xs
+                               var <- parseVar (unpack (ltrim x))
+                               value <- parseValue (unpack (ltrim y))
+                               Just ((pack var, pack value) :: model, xs)
+parseModel _ = Nothing
+
+
+
+sat : Smt () -> IO (Maybe (Result, Model))
+sat smt = do _ <- writeFile "input.smt2" $ compile smt
              _ <- exec "input.smt2" "output.smt2"
-             pure ()
+             r <- readFile "output.smt2"
+             case r of
+               Left err => do printLn err; pure Nothing
+               Right str => let r = parseResult $ lines str in
+                            case r of
+                              Nothing => do printLn "Error parsing result"; pure Nothing
+                              Just (Sat, xs) => let r = parseModel xs in
+                                                case r of
+                                                  Nothing => do printLn "Error parsing model"; pure Nothing
+                                                  Just (model, xs) => pure $ Just (Sat, model)
+                              Just (UnSat, xs) => pure $ Just (UnSat, [])
+                              Just (Unknown, xs) => pure $ Just (Unknown, [])
+
+print : Smt () -> IO ()
+print smt = putStrLn $ compile smt
