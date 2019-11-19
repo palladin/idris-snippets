@@ -16,7 +16,7 @@ Show TypeT where
   show BoolT = "Bool"
   show (NumT IntT) = "Int"
   show (NumT RealT) = "Real"
-  show (BitVecT n) = "BitVec " ++ show n
+  show (BitVecT n) = "(_ BitVec " ++ show n ++ ")"
 
 
 data Expr : TypeT -> Type where
@@ -206,6 +206,11 @@ exec : String -> String -> IO Int
 exec input output = system $ "z3 -smt2 " ++ input ++ " > " ++ output
 
 data Result = Sat | UnSat | Unknown
+
+Show Result where
+  show Sat = "sat"
+  show UnSat = "unsat"
+  show Unknown = "unknown"
 
 Model : Type
 Model = List (String, String)

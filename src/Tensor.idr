@@ -23,6 +23,10 @@ toVect : Tensor xs a -> toVectT xs a
 toVect {xs = []} (Scalar v) = v
 toVect {xs = (x :: xs)} (Prism v) = toVect v
 
+finToInt : Fin n -> Int
+finToInt FZ     = 0
+finToInt (FS k) = 1 + finToInt k
+
 tabulate : (Fin n -> a) -> Vect n a
 tabulate {n = Z} _ = []
 tabulate {n = S k} f = f FZ :: tabulate (f . FS)
