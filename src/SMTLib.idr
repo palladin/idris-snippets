@@ -237,12 +237,17 @@ parseVar ('(' :: 'd' :: 'e' :: 'f' :: 'i' :: 'n' :: 'e' :: '-' :: 'f' :: 'u' :: 
 parseVar _ = Nothing
 
 
+parseValue' : List Char -> Maybe (List Char)
+parseValue' [] = Just []
+parseValue' (')' :: _) = Just []
+parseValue' (' ' :: _) = Just []
+parseValue' [_] = Nothing
+parseValue' (x :: xs) = do xs <- parseValue' xs
+                           Just (x :: xs)
+
 parseValue : List Char -> Maybe (List Char)
-parseValue [] = Just []
-parseValue [')'] = Just []
-parseValue [_] = Nothing
-parseValue (x :: xs) = do xs <- parseValue xs
-                          Just (x :: xs)
+parseValue ('(' :: '_' :: ' ' :: 'b' :: 'v' :: xs) = parseValue' xs
+parseValue xs = parseValue' xs
 
 
 parseModel : List String -> Maybe (Model, List String)
