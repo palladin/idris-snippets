@@ -21,7 +21,8 @@ varNames : String -> Tensor [n] String
 varNames name = toTensor $ tabulate (\i => name ++ "_" ++ show (finToNat i))
 
 solver : Smt ()
-solver = do vars <- declareVars (varNames "var" {n = 2}) (BitVecT 8)
+solver = do setOption ":pp.bv-literals false"
+            vars <- declareVars (varNames "var" {n = 2}) (BitVecT 8)
             let vars = toVect vars
             let vps = assocVarPos vars
             assert $ var (index 0 vps) == (bv 42 8)

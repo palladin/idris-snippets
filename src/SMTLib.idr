@@ -114,6 +114,7 @@ data Cmd : Type -> Type where
   AssertCmd : Expr BoolT -> Cmd ()
   CheckSatCmd : Cmd ()
   GetModelCmd : Cmd ()
+  SetOptionCmd : String -> Cmd ()
 
 declareVar : String -> (t : TypeT) -> Cmd (Expr t)
 declareVar v t = DeclareVarCmd v t
@@ -129,6 +130,9 @@ checkSat = CheckSatCmd
 
 getModel : Cmd ()
 getModel = GetModelCmd
+
+setOption : String -> Cmd ()
+setOption s = SetOptionCmd s
 
 data Smt : Type -> Type where
   Pure : a -> Smt a
@@ -171,6 +175,7 @@ compileCmd (DeclareVarsCmd xs t) = (map (\x => VarExpr x t) xs,
 compileCmd (AssertCmd e) = ((), "(assert " ++ compileExpr e ++ ")")
 compileCmd CheckSatCmd = ((), "(check-sat)")
 compileCmd GetModelCmd = ((), "(get-model)")
+compileCmd (SetOptionCmd s) = ((), "(set-option " ++ s ++ ")")
 
 compile : Smt () -> String
 compile (Pure ()) = ""
