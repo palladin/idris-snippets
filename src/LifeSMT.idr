@@ -38,9 +38,6 @@ shift (Right :: ds) e xss = shift ds e (map (shiftRight e) xss)
 shift (Up :: ds) e xss = shift ds e (shiftLeft (replicate _ e) xss)
 shift (Down :: ds) e xss = shift ds e (shiftRight (replicate _ e) xss)
 
-index : Fin n -> Fin m -> Vect n (Vect m a) -> a
-index n m xss = index m (index n xss)
-
 data Pos = First | Last | Middle
 
 toPos : Fin n -> Pos

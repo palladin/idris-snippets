@@ -30,8 +30,8 @@ createVarPos {n} {size} vs = tabulate (\i => MkVar (bv (finToInt i) size) (index
 lookupVar : Expr (BitVecT size) -> Expr (BitVecT size) -> Vect n (VarPos size) -> Expr BoolT
 lookupVar p v vs = or [ite (p == pos vp) (v == var vp) (bool False) | vp <- vs]
 
-createArgs : Vect n (Expr BoolT) -> Vect n (Expr (BitVecT size)) -> Vect n (Expr (BitVecT size)) -> Vect n (Arg size)
-createArgs isVars vars instrs = tabulate (\i => MkArg (index i isVars) (index i vars) (index i instrs))
+createArgs : Vect n (Vect argsN (Expr BoolT)) -> Vect n (Vect argsN (Expr (BitVecT size))) -> Vect n (Vect argsN (Expr (BitVecT size))) -> Vect n (Vect argsN (Arg size))
+createArgs isVars vars instrs = tabulate (\i0 => tabulate (\i1 => MkArg (index i0 i1 isVars) (index i0 i1 vars) (index i0 i1 instrs)))
 
 createInstrs : Vect n (Expr (BitVecT size)) -> Vect n (Expr (BitVecT size)) -> Vect n (Vect argsN (Arg size)) -> Vect n (Instr argsN size)
 createInstrs {size} vals ops args = tabulate (\i => MkInstr (bv (finToInt i) size) (index i vals) (index i ops) (index i args))
@@ -47,12 +47,18 @@ varNames' name = toTensor $ tabulate (\i0 => tabulate (\i1 => name ++ "_" ++ sho
 
 solver : Smt ()
 solver = do setOption ":pp.bv-literals false"
-            vars <- declareVars (varNames "var" {n = 2}) (BitVecT 8)
-            let vars = toVect vars
-            let vps = createVarPos vars
-            assert $ var (index 0 vps) == (bv 42 8)
-            var <- declareVar "x" (BitVecT 8)
-            assert $ lookupVar (bv 0 8) var vps
+            vars <- declareVars (varNames {n = 2} "var" ) (BitVecT 8)
+            argIsVar <- declareVars (varNames' {n = 2} {m = 2} "argIsVar") BoolT
+            argVarPos <- declareVars (varNames' {n = 2} {m = 2} "argVarPos") (BitVecT 8)
+            argInstrPos <- declareVars (varNames' {n = 2} {m = 2} "argInstrPos") (BitVecT 8)
+            instrVal <- declareVars (varNames {n = 2} "instrVal") (BitVecT 8)
+            instrOp <- declareVars (varNames {n = 2} "instrOp") (BitVecT 8)
+            let vps = createVarPos (toVect vars)
+            let args = createArgs (toVect argIsVar) (toVect argVarPos) (toVect argInstrPos)
+            let instrs = createInstrs (toVect instrVal) (toVect instrOp) args
+            x <- declareVar "x" (BitVecT 8)
+            assert $ x == (bv 42 8)
+            assert $ lookupInstr (bv 1 8) x instrs
             checkSat
             getModel
             end

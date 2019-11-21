@@ -27,6 +27,9 @@ finToInt : Fin n -> Int
 finToInt FZ     = 0
 finToInt (FS k) = 1 + finToInt k
 
+index : Fin n -> Fin m -> Vect n (Vect m a) -> a
+index n m xss = index m (index n xss)
+
 tabulate : (Fin n -> a) -> Vect n a
 tabulate {n = Z} _ = []
 tabulate {n = S k} f = f FZ :: tabulate (f . FS)
