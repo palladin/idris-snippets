@@ -45,6 +45,15 @@ varNames name = toTensor $ tabulate (\i => name ++ "_" ++ show (finToNat i))
 varNames' : String -> Tensor [n, m] String
 varNames' name = toTensor $ tabulate (\i0 => tabulate (\i1 => name ++ "_" ++ show (finToNat i0) ++ "_" ++ show (finToNat i1)))
 
+evalInstr : Vect opsN (Expr (BitVecT size) -> Vect argsN (Expr (BitVecT size)) -> Expr BoolT) ->
+            Vect varsN (VarPos size) -> Vect instrsN (Instr argsN size) -> Expr BoolT
+
+ops : Vect 3 (Expr (BitVecT 8) -> Vect 2 (Expr (BitVecT 8)) -> Expr BoolT)
+ops = [\r, arg => r == bvnot (index 0 arg),
+       \r, arg => r == bvand (index 0 arg) (index 1 arg),
+       \r, arg => r == bvor (index 0 arg) (index 1 arg)]
+
+
 solver : Smt ()
 solver = do setOption ":pp.bv-literals false"
             vars <- declareVars (varNames {n = 2} "var" ) (BitVecT 8)
