@@ -1,8 +1,9 @@
 module Tensor
 
 -- Based on https://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/aplicative.pdf
-
+import src.GenericArity
 import Data.Vect
+import Data.HVect
 import Data.Matrix.Numeric
 
 %access public export
@@ -14,6 +15,10 @@ data Tensor : Vect n Nat -> Type -> Type where
 toVectT : Vect n Nat -> Type -> Type
 toVectT [] a = a
 toVectT (x :: xs) a = toVectT xs (Vect x a)
+
+toVectT' : Vect n Nat -> Type -> Type
+toVectT' [] a = a
+toVectT' (x :: xs) a = Vect x (toVectT' xs a)
 
 toTensor : toVectT xs a -> Tensor xs a
 toTensor {xs = []} v = Scalar v
@@ -27,12 +32,23 @@ finToInt : Fin n -> Int
 finToInt FZ     = 0
 finToInt (FS k) = 1 + finToInt k
 
+index' : {xs : Vect n Nat} -> HVect (map (\n => Fin n) xs) -> toVectT' xs a -> a
+index' {xs = []} [] x = x
+index' {xs = (x :: xs)} (fin :: fins) vs = index' fins (Data.Vect.index fin vs)
+
 index : Fin n -> Fin m -> Vect n (Vect m a) -> a
-index n m xss = index m (index n xss)
+index {n} {m} fn fm xss = index' {xs = [n, m]} [fn, fm] xss
+
+positions' : (n : Nat) -> Vect n (Fin n)
+positions' Z = []
+positions' (S n) = FZ :: map FS (positions' n)
+
+tabulate' : {xs : Vect n Nat} -> (Arrows n (map (\n => Fin n) xs) a) -> toVectT' xs a
+tabulate' {n = Z} {xs = []} x = x
+tabulate' {n = S n} {xs = (x :: xs)} f = [tabulate' (f fn) | fn <- positions' x]
 
 tabulate : (Fin n -> a) -> Vect n a
-tabulate {n = Z} _ = []
-tabulate {n = S k} f = f FZ :: tabulate (f . FS)
+tabulate {n} f = [f fn | fn <- positions' n]
 
 Functor (Tensor ns) where
   map f (Scalar x) = Scalar (f x)
