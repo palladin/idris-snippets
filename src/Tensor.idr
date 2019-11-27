@@ -48,7 +48,7 @@ tabulate' {n = Z} {xs = []} x = x
 tabulate' {n = S n} {xs = (x :: xs)} f = [tabulate' (f fn) | fn <- positions' x]
 
 tabulate : (Fin n -> a) -> Vect n a
-tabulate {n} f = [f fn | fn <- positions' n]
+tabulate {n} f = tabulate' {xs = [n]} f
 
 Functor (Tensor ns) where
   map f (Scalar x) = Scalar (f x)
