@@ -109,6 +109,9 @@ not x = NotExpr x
 imp : Expr BoolT -> Expr BoolT -> Expr BoolT
 imp l r = ImpExpr l r
 
+ite' : Expr BoolT -> Expr BoolT -> Expr BoolT -> Expr BoolT
+ite' p l r = and [imp p l, imp (not p) r]
+
 ite : Expr BoolT -> Expr a -> Expr a -> Expr a
 ite p l r = IteExpr p l r
 

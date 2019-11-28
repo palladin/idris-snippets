@@ -47,7 +47,7 @@ createVarPos : Vect n (Expr (BitVecT size)) -> Vect n (VarPos size)
 createVarPos {n} {size} vs = tabulate (\i => MkVar (bv (finToInt i) size) (index i vs))
 
 lookupVar : Expr (BitVecT size) -> Expr (BitVecT size) -> Vect n (VarPos size) -> Expr BoolT
-lookupVar p v vs = or [ite (p == pos vp) (v == val vp) (bool False) | vp <- vs]
+lookupVar p v vs = or [ite' (p == pos vp) (v == val vp) (bool False) | vp <- vs]
 
 createArgs : Vect n (Vect argsN (Expr BoolT)) -> Vect n (Vect argsN (Expr (BitVecT size))) -> Vect n (Vect argsN (Expr (BitVecT size))) ->  Vect n (Vect argsN (Expr (BitVecT size))) -> Vect n (Vect argsN (Arg size))
 createArgs isVars vars instrs vals = tabulate (\i0 => tabulate (\i1 => MkArg (index i0 i1 isVars) (index i0 i1 vars) (index i0 i1 instrs) (index i0 i1 vals)))
@@ -56,7 +56,7 @@ createInstrs : Vect n (Expr (BitVecT size)) -> Vect n (Expr (BitVecT size)) -> V
 createInstrs {size} vals ops args = tabulate (\i => MkInstr (bv (finToInt i) size) (index i vals) (index i ops) (index i args))
 
 lookupInstr : Expr (BitVecT size) -> Expr (BitVecT size) -> Vect n (Instr argsN size) -> Expr BoolT
-lookupInstr p v instrs = or [ite (p == pos instr) (v == val instr) (bool False) | instr <- instrs]
+lookupInstr p v instrs = or [ite' (p == pos instr) (v == val instr) (bool False) | instr <- instrs]
 
 varNames : String -> Tensor [n] String
 varNames name = toTensor $ tabulate (\i => name ++ "_" ++ show (finToNat i))
@@ -65,7 +65,7 @@ varNames' : String -> Tensor [n, m] String
 varNames' name = toTensor $ tabulate (\i0 => tabulate (\i1 => name ++ "_" ++ show (finToNat i0) ++ "_" ++ show (finToNat i1)))
 
 lookupOp : Expr (BitVecT size) -> Expr (BitVecT size) -> Vect argsN (Expr (BitVecT size)) -> Vect opsN (Op argsN size) -> Expr BoolT
-lookupOp {size} opPos instrVal args ops = or [ite (opPos == (bv (id op) size)) (func op instrVal args) (bool False) | op <- ops]
+lookupOp {size} opPos instrVal args ops = or [ite' (opPos == (bv (id op) size)) (func op instrVal args) (bool False) | op <- ops]
 
 checkInstr : Vect n (Instr argsN size) -> Expr BoolT
 checkInstr [] = bool True
@@ -76,7 +76,7 @@ evalInstr : Vect opsN (Op argsN size) -> Vect varsN (VarPos size) -> Vect instrs
 evalInstr {argsN} ops vars instrs = and [and [assocArg vars instrs instr, lookupOp (op instr) (val instr) (map val $ args instr) ops] | instr <- instrs]
   where
     assocArg : Vect varsN (VarPos size) -> Vect instrsN (Instr argsN size) -> Instr argsN size -> Expr BoolT
-    assocArg vars instrs instr = and $ tabulate (\i => let arg = index i (args instr) in ite (isVar arg) (lookupVar (varPos arg) (val arg) vars)
+    assocArg vars instrs instr = and $ tabulate (\i => let arg = index i (args instr) in ite' (isVar arg) (lookupVar (varPos arg) (val arg) vars)
                                                                                                          (lookupInstr (instrPos arg) (val arg) instrs))
 
 InstrsN : Nat
@@ -125,7 +125,8 @@ instrNames = tabulate (\i => MkInstrName (index i (toVect instrOp))
 
 solver : List Int -> List Int -> Smt ()
 solver input output =
-         do setOption ":pp.bv-literals false"
+         do setLogic "QF_BV"
+            setOption ":pp.bv-literals false"
             let n = 0
 
             argIsVar <- declareVars argIsVar BoolT
