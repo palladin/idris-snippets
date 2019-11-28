@@ -24,7 +24,6 @@ record ArgName (size : Nat) where
   isVar : String
   varPos : String
   instrPos : String
-  val : String
 
 record Instr (argsN : Nat) (size : Nat) where
   constructor MkInstr
@@ -35,7 +34,6 @@ record Instr (argsN : Nat) (size : Nat) where
 
 record InstrName (argsN : Nat) (size : Nat) where
     constructor MkInstrName
-    val : String
     op : String
     args : Vect argsN (ArgName size)
 
@@ -80,55 +78,71 @@ evalInstr {argsN} ops vars instrs = and [and [assocArg vars instrs instr, lookup
     assocArg : Vect varsN (VarPos size) -> Vect instrsN (Instr argsN size) -> Instr argsN size -> Expr BoolT
     assocArg vars instrs instr = and $ tabulate (\i => let arg = index i (args instr) in ite (isVar arg) (lookupVar (varPos arg) (val arg) vars)
                                                                                                          (lookupInstr (instrPos arg) (val arg) instrs))
-ops : Vect 3 (Op 2 8)
+
+InstrsN : Nat
+InstrsN = 1
+
+ArgsN : Nat
+ArgsN = 2
+
+OpsN : Nat
+OpsN = 3
+
+BitSize : Nat
+BitSize = 8
+
+ops : Vect OpsN (Op ArgsN BitSize)
 ops = [MkOp 0 (\r, arg => r == bvand (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " bvand " ++ (index 1 args)),
        MkOp 1 (\r, arg => r == bvor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " bvor " ++ (index 1 args)),
        MkOp 2 (\r, arg => r == bvnot (index 0 arg)) (\args => "bvnot " ++ (index 0 args))]
 
-varPosVal : Tensor [1] String
-varPosVal = varNames "varPosVal"
+varPosVal : Int -> Tensor [InstrsN] String
+varPosVal n = varNames $ "varPosVal" ++ show n
 
-argIsVar : Tensor [2, 1] String
+argIsVar : Tensor [ArgsN, InstrsN] String
 argIsVar = varNames' "argIsVar"
 
-argVarPos : Tensor [2, 1] String
+argVarPos : Tensor [ArgsN, InstrsN] String
 argVarPos = varNames' "argVarPos"
 
-argInstrPos : Tensor [2, 1] String
+argInstrPos : Tensor [ArgsN, InstrsN] String
 argInstrPos = varNames' "argInstrPos"
 
-argVal : Tensor [2, 1] String
-argVal = varNames' "argVal"
+argVal : Int -> Tensor [ArgsN, InstrsN] String
+argVal n = varNames' $ "argVal" ++ show n
 
-instrVal : Tensor [1] String
-instrVal = varNames "instrVal"
+instrVal : Int -> Tensor [InstrsN] String
+instrVal n = varNames $ "instrVal" ++ show n
 
-instrOp : Tensor [1] String
+instrOp : Tensor [InstrsN] String
 instrOp = varNames "instrOp"
 
-instrNames : Vect 1 (InstrName 2 8)
-instrNames = tabulate (\i => MkInstrName (index i (toVect instrVal))
-                                         (index i (toVect instrOp))
+instrNames : Vect InstrsN (InstrName ArgsN BitSize)
+instrNames = tabulate (\i => MkInstrName (index i (toVect instrOp))
                                          (tabulate (\j => MkArgName (index i j (toVect argIsVar))
                                                                     (index i j (toVect argVarPos))
-                                                                    (index i j (toVect argInstrPos))
-                                                                    (index i j (toVect argVal)))))
+                                                                    (index i j (toVect argInstrPos)))))
 
-solver : Smt ()
-solver = do setOption ":pp.bv-literals false"
-            vars <- declareVars varPosVal (BitVecT 8)
+solver : List Int -> List Int -> Smt ()
+solver input output =
+         do setOption ":pp.bv-literals false"
+            let n = 0
+
             argIsVar <- declareVars argIsVar BoolT
-            argVarPos <- declareVars argVarPos (BitVecT 8)
-            argInstrPos <- declareVars argInstrPos (BitVecT 8)
-            argVal <- declareVars argVal (BitVecT 8)
-            instrVal <- declareVars instrVal (BitVecT 8)
-            instrOp <- declareVars instrOp (BitVecT 8)
+            argVarPos <- declareVars argVarPos (BitVecT BitSize)
+            argInstrPos <- declareVars argInstrPos (BitVecT BitSize)
+            instrOp <- declareVars instrOp (BitVecT BitSize)
+            vars <- declareVars (varPosVal n) (BitVecT BitSize)
+            argVal <- declareVars (argVal n) (BitVecT BitSize)
+            instrVal <- declareVars (instrVal n) (BitVecT BitSize)
+
             let vps = createVarPos (toVect vars)
             let args = createArgs (toVect argIsVar) (toVect argVarPos) (toVect argInstrPos) (toVect argVal)
             let instrs = createInstrs (toVect instrVal) (toVect instrOp) args
+
             assert $ checkInstr instrs
             assert $ evalInstr ops vps instrs
-            assert $ val (index 0 instrs) == bvnot (val  (index 0 vps))
+            assert $ val (index 0 instrs) == bvnot (val (index 0 vps))
             checkSat
             getModel
             end
@@ -140,7 +154,7 @@ parseBool _ = Nothing
 
 parseArgs : Model -> Vect n (ArgName size) -> Maybe (Vect n String)
 parseArgs {n = Z} model args = Just []
-parseArgs {n = (S n)} model ((MkArgName isVar varPos instrPos val) :: args) =
+parseArgs {n = (S n)} model ((MkArgName isVar varPos instrPos) :: args) =
   do isVarVal <- lookup isVar model
      isVar <- parseBool isVarVal
      varPosVal <- lookup varPos model
@@ -150,7 +164,7 @@ parseArgs {n = (S n)} model ((MkArgName isVar varPos instrPos val) :: args) =
 
 parseInstrs : Model -> Vect opsN (Op argsN size) -> Vect n (InstrName argsN size) -> Maybe (List String)
 parseInstrs {n = Z} model ops [] = Just []
-parseInstrs {n = S n} model ops ((MkInstrName valStr opStr args) :: instrs) =
+parseInstrs {n = S n} model ops ((MkInstrName opStr args) :: instrs) =
     do opVal <- lookup opStr model
        opId <- parseInteger {a = Int} opVal
        op <- find (\op => id op == opId) ops
@@ -159,7 +173,7 @@ parseInstrs {n = S n} model ops ((MkInstrName valStr opStr args) :: instrs) =
        pure $ ["instr" ++ show n ++ " = " ++ (str op args)] ++ instrs
 
 run : IO ()
-run = do r <- sat solver
+run = do r <- sat $ solver [255] [0]
          case r of
            Nothing => do printLn "Error parsing result"
            Just (Sat, model) =>

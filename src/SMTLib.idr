@@ -38,6 +38,7 @@ data Expr : TypeT -> Type where
   AndExpr : Vect n (Expr BoolT) -> Expr BoolT
   OrExpr : Vect n (Expr BoolT) -> Expr BoolT
   NotExpr : Expr BoolT -> Expr BoolT
+  ImpExpr : Expr BoolT -> Expr BoolT -> Expr BoolT
   IteExpr : Expr BoolT -> Expr a -> Expr a -> Expr a
 
 
@@ -105,6 +106,9 @@ or xs = OrExpr xs
 not : Expr BoolT -> Expr BoolT
 not x = NotExpr x
 
+imp : Expr BoolT -> Expr BoolT -> Expr BoolT
+imp l r = ImpExpr l r
+
 ite : Expr BoolT -> Expr a -> Expr a -> Expr a
 ite p l r = IteExpr p l r
 
@@ -115,6 +119,7 @@ data Cmd : Type -> Type where
   CheckSatCmd : Cmd ()
   GetModelCmd : Cmd ()
   SetOptionCmd : String -> Cmd ()
+  SetLogicCmd : String -> Cmd ()
 
 declareVar : String -> (t : TypeT) -> Cmd (Expr t)
 declareVar v t = DeclareVarCmd v t
@@ -133,6 +138,9 @@ getModel = GetModelCmd
 
 setOption : String -> Cmd ()
 setOption s = SetOptionCmd s
+
+setLogic : String -> Cmd ()
+setLogic s = SetLogicCmd s
 
 data Smt : Type -> Type where
   Pure : a -> Smt a
@@ -166,6 +174,7 @@ compileExpr (LessOrEqualExpr l r) = "(<= " ++ compileExpr l ++ " " ++ compileExp
 compileExpr (AndExpr xs) = "(and " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (OrExpr xs) = "(or " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (NotExpr x) = "(not " ++ compileExpr x ++ ")"
+compileExpr (ImpExpr l r) = "(=> " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (IteExpr p l r) = "(if " ++ compileExpr p ++ " " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 
 compileCmd : Cmd a -> (a, String)
@@ -176,6 +185,7 @@ compileCmd (AssertCmd e) = ((), "(assert " ++ compileExpr e ++ ")")
 compileCmd CheckSatCmd = ((), "(check-sat)")
 compileCmd GetModelCmd = ((), "(get-model)")
 compileCmd (SetOptionCmd s) = ((), "(set-option " ++ s ++ ")")
+compileCmd (SetLogicCmd s) = ((), "(set-logic " ++ s ++ ")")
 
 compile : Smt () -> String
 compile (Pure ()) = ""
