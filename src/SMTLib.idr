@@ -124,27 +124,6 @@ data Cmd : Type -> Type where
   SetOptionCmd : String -> Cmd ()
   SetLogicCmd : String -> Cmd ()
 
-declareVar : String -> (t : TypeT) -> Cmd (Expr t)
-declareVar v t = DeclareVarCmd v t
-
-declareVars : Traversable f => f String -> (t : TypeT) -> Cmd (f (Expr t))
-declareVars vs t = DeclareVarsCmd vs t
-
-assert : Expr BoolT -> Cmd ()
-assert e = AssertCmd e
-
-checkSat : Cmd ()
-checkSat = CheckSatCmd
-
-getModel : Cmd ()
-getModel = GetModelCmd
-
-setOption : String -> Cmd ()
-setOption s = SetOptionCmd s
-
-setLogic : String -> Cmd ()
-setLogic s = SetLogicCmd s
-
 data Smt : Type -> Type where
   Pure : a -> Smt a
   Bind : Cmd a -> (a -> Smt b) -> Smt b
@@ -152,11 +131,35 @@ data Smt : Type -> Type where
 pure : a -> Smt a
 pure x = Pure x
 
-(>>=) : Cmd a -> (a -> Smt b) -> Smt b
-(>>=) cmd f = Bind cmd f
+(>>=) : Smt a -> (a -> Smt b) -> Smt b
+(>>=) (Pure x) f = f x
+(>>=) (Bind cmd g) f = Bind cmd (\x => g x >>= f)
 
 end : Smt ()
 end = Pure ()
+
+declareVar : String -> (t : TypeT) -> Smt (Expr t)
+declareVar v t = Bind (DeclareVarCmd v t) pure
+
+declareVars : Traversable f => f String -> (t : TypeT) -> Smt (f (Expr t))
+declareVars vs t = Bind (DeclareVarsCmd vs t) pure
+
+assert : Expr BoolT -> Smt ()
+assert e = Bind (AssertCmd e) pure
+
+checkSat : Smt ()
+checkSat = Bind CheckSatCmd pure
+
+getModel : Smt ()
+getModel = Bind GetModelCmd pure
+
+setOption : String -> Smt ()
+setOption s = Bind (SetOptionCmd s) pure
+
+setLogic : String -> Smt ()
+setLogic s = Bind (SetLogicCmd s) pure
+
+
 
 compileExpr : Expr t -> String
 compileExpr (VarExpr x t) = x
@@ -202,7 +205,7 @@ example0 = (bool True) && (bool True)
 example1 : Expr BoolT
 example1 = (bv 1 8) == (bv 1 8)
 
-example2 : Cmd ()
+example2 : Smt ()
 example2 = checkSat
 
 example3 : Smt ()
