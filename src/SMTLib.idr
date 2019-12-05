@@ -24,6 +24,7 @@ data Expr : TypeT -> Type where
   BoolExpr : Bool -> Expr BoolT
   BvExpr : Int -> (n : Nat) -> Expr (BitVecT n)
   BvAddExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvSubExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvMulExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvAndExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvOrExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
@@ -57,6 +58,9 @@ real x = RealExpr x
 
 bvadd : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
 bvadd l r = BvAddExpr l r
+
+bvsub : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvsub l r = BvSubExpr l r
 
 bvmul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
 bvmul l r = BvMulExpr l r
@@ -170,6 +174,7 @@ compileExpr (RealExpr x) = show x
 compileExpr (BvAddExpr l r) = "(bvadd " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvMulExpr l r) = "(bvmul " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvAndExpr l r) = "(bvand " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvSubExpr l r) = "(bvsub " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvOrExpr l r) = "(bvor " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvNotExpr x) = "(bvnot " ++ compileExpr x ++ ")"
 compileExpr (AddExpr xs) = "(+ " ++ (unlines . toList . map compileExpr) xs ++ ")"

@@ -90,15 +90,17 @@ ArgsN : Nat
 ArgsN = 2
 
 OpsN : Nat
-OpsN = 3
+OpsN = 5
 
 BitSize : Nat
-BitSize = 2
+BitSize = 3
 
 ops : Vect OpsN (Op ArgsN BitSize)
 ops = [MkOp 0 (\r, arg => r == bvand (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " bvand " ++ (index 1 args)),
        MkOp 1 (\r, arg => r == bvor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " bvor " ++ (index 1 args)),
-       MkOp 2 (\r, arg => r == bvnot (index 0 arg)) (\args => "bvnot " ++ (index 0 args))]
+       MkOp 2 (\r, arg => r == bvnot (index 0 arg)) (\args => "bvnot " ++ (index 0 args)),
+       MkOp 3 (\r, arg => ite ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args)),
+       MkOp 4 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " bvsub " ++ (index 1 args))]
 
 varPosVal : Int -> Tensor [VarsN] String
 varPosVal n = varNames $ "varPosVal" ++ show n
@@ -195,13 +197,13 @@ equiv x f g = not $ f x == g x
 
 testEquiv : Smt ()
 testEquiv = do x <- declareVar "x" (BitVecT BitSize)
-               assert $ equiv x (\x => bvand (bvand x x) (bvor x x)) (\x => bvnot $ bvand x x)
+               assert $ equiv x (\x => bvnot x) (\x => bvnot $ bvand x x)
                checkSat
                getModel
                end
 
 data' : List (Expr (BitVecT BitSize), Expr (BitVecT BitSize))
-data' = let f = \x => bvnot $ bvand x x in
+data' = let f = \x => bv 5 BitSize in
         let inp = [0..7] in
         map (\n => let inp = bv n BitSize in (inp, f inp)) inp
 
@@ -213,7 +215,7 @@ run smt = do r <- sat smt
              case r of
                Nothing => do printLn "Error parsing result"
                Just (Sat, model) =>
-                  do putStrLn $ show model
+                  do
                      putStrLn $ show $ parseInstrs model ops instrNames
                      pure ()
                Just (UnSat, _) => putStrLn "unsat"
