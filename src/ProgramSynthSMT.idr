@@ -210,12 +210,14 @@ parseInstrs model ops ((MkInstrName pos isConst constVal opStr args) :: instrs) 
        instrs <- parseInstrs model ops instrs
        pure $ ["instr" ++ show pos ++ " = " ++ (if isConst then constVal else (str op args))] ++ instrs
 
-equiv : Expr a -> (Expr a -> Expr a) -> (Expr a -> Expr a) -> Expr BoolT
-equiv x f g = not $ f x == g x
+equiv : Expr a -> Expr a -> Expr a -> (Expr a -> Expr a -> Expr BoolT) -> (Expr a -> Expr a -> Expr BoolT) -> Expr BoolT
+equiv x r r' f g = and [f r x, g r' x, not $ r == r']
 
 testEquiv : Smt ()
 testEquiv = do x <- declareVar "x" (BitVecT BitSize)
-               assert $ equiv x (\x => bvnot x) (\x => bvnot $ bvand x x)
+               r <- declareVar "r" (BitVecT BitSize)
+               r' <- declareVar "_r" (BitVecT BitSize)
+               assert $ equiv x r r' (\r, x => r == bvnot x) (\r, x => r == (bvnot $ bvand x x))
                checkSat
                getModel
                end
