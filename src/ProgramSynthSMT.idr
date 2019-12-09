@@ -88,7 +88,7 @@ VarsN : Nat
 VarsN = 1
 
 InstrsN : Nat
-InstrsN = 2
+InstrsN = 4
 
 ArgsN : Nat
 ArgsN = 2
@@ -217,13 +217,14 @@ testEquiv : Smt ()
 testEquiv = do x <- declareVar "x" (BitVecT BitSize)
                r <- declareVar "r" (BitVecT BitSize)
                r' <- declareVar "_r" (BitVecT BitSize)
-               assert $ equiv x r r' (\r, x => r == bvnot x) (\r, x => r == (bvnot $ bvand x x))
+               assert $ equiv x r r' (\r, x => r == ite (bvor x (bvsub (bvsub x x) x) == bvsub (bvsub x x) x) (bv 1 BitSize) (bv 0 BitSize))
+                                     (\r, x => r == ite ((bv 0 BitSize) == (bvand x (bvsub x (bv 1 BitSize)))) (bv 1 BitSize) (bv 0 BitSize))
                checkSat
                getModel
                end
 
 data' : List (Expr (BitVecT BitSize), Expr (BitVecT BitSize))
-data' = let f = \x => bv 5 BitSize in
+data' = let f = \x => ite (or [x == bv 0 BitSize, x == bv 1 BitSize, x == bv 2 BitSize, x == bv 4 BitSize]) (bv 1 BitSize) (bv 0 BitSize) in
         let inp = [0..7] in
         map (\n => let inp = bv n BitSize in (inp, f inp)) inp
 
@@ -233,7 +234,7 @@ testSolver = solver data'
 run : Smt () -> IO ()
 run smt = do r <- sat smt
              case r of
-               Nothing => do printLn "Error parsing result"
+               Nothing => do putStrLn "Error parsing result"
                Just (Sat, model) =>
                   do
                      putStrLn $ show $ parseInstrs model ops instrNames

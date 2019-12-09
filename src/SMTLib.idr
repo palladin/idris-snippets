@@ -283,16 +283,17 @@ parseModel _ = Nothing
 
 sat : Smt () -> IO (Maybe (Result, Model))
 sat smt = do _ <- writeFile "input.smt2" $ compile smt
+             putStrLn "z3 solving"
              _ <- exec "input.smt2" "output.smt2"
              r <- readFile "output.smt2"
              case r of
                Left err => do printLn err; pure Nothing
                Right str => let r = parseResult $ lines str in
                             case r of
-                              Nothing => do printLn "Error parsing result"; pure Nothing
+                              Nothing => do putStrLn "Error parsing result"; pure Nothing
                               Just (Sat, xs) => let r = parseModel xs in
                                                 case r of
-                                                  Nothing => do printLn "Error parsing model"; pure Nothing
+                                                  Nothing => do putStrLn "Error parsing model"; pure Nothing
                                                   Just (model, xs) => pure $ Just (Sat, model)
                               Just (UnSat, xs) => pure $ Just (UnSat, [])
                               Just (Unknown, xs) => pure $ Just (Unknown, [])
