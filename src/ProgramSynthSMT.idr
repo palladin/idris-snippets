@@ -214,11 +214,12 @@ equiv : Expr a -> Expr a -> Expr a -> (Expr a -> Expr a -> Expr BoolT) -> (Expr 
 equiv x r r' f g = and [f r x, g r' x, not $ r == r']
 
 testEquiv : Smt ()
-testEquiv = do x <- declareVar "x" (BitVecT BitSize)
-               r <- declareVar "r" (BitVecT BitSize)
-               r' <- declareVar "_r" (BitVecT BitSize)
-               assert $ equiv x r r' (\r, x => r == ite (bvor x (bvsub (bvsub x x) x) == bvsub (bvsub x x) x) (bv 1 BitSize) (bv 0 BitSize))
-                                     (\r, x => r == ite ((bv 0 BitSize) == (bvand x (bvsub x (bv 1 BitSize)))) (bv 1 BitSize) (bv 0 BitSize))
+testEquiv = let size = 64 in
+            do x <- declareVar "x" (BitVecT size)
+               r <- declareVar "r" (BitVecT size)
+               r' <- declareVar "_r" (BitVecT size)
+               assert $ equiv x r r' (\r, x => r == ite (bvor x (bvsub (bvsub x x) x) == bvsub (bvsub x x) x) (bv 1 size) (bv 0 size))
+                                     (\r, x => r == ite ((bv 0 size) == (bvand x (bvsub x (bv 1 size)))) (bv 1 size) (bv 0 size))
                checkSat
                getModel
                end

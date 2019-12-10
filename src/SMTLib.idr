@@ -199,10 +199,13 @@ compileCmd (SetOptionCmd s) = ((), "(set-option " ++ s ++ ")")
 compileCmd (SetLogicCmd s) = ((), "(set-logic " ++ s ++ ")")
 
 compile : Smt () -> String
-compile (Pure ()) = ""
-compile (Bind cmd f) = let (a, s) = compileCmd cmd in
-                       let s' = compile $ f a in
-                       unlines [s, s']
+compile smt = unlines $ compile' smt
+  where
+    compile' : Smt () -> List String
+    compile' (Pure ()) = [""]
+    compile' (Bind cmd f) = let (a, s) = compileCmd cmd in
+                           let s' = compile' $ f a in
+                           s :: s'
 
 example0 : Expr BoolT
 example0 = (bool True) && (bool True)
