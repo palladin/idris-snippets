@@ -97,11 +97,12 @@ BitSize : Nat
 BitSize = 3
 
 ops : Vect OpsN (Op ArgsN BitSize)
-ops = [MkOp 0 (\r, arg => r == bvand (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " bvand " ++ (index 1 args)),
-       MkOp 1 (\r, arg => r == bvor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " bvor " ++ (index 1 args)),
-       MkOp 2 (\r, arg => r == bvnot (index 0 arg)) (\args => "bvnot " ++ (index 0 args)),
-       MkOp 3 (\r, arg => ite ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args)),
-       MkOp 4 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " bvsub " ++ (index 1 args))]
+ops = let ops = [MkOp 0 (\r, arg => r == bvand (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " & " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " | " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvnot (index 0 arg)) (\args => "~ " ++ (index 0 args)),
+                 MkOp 0 (\r, arg => ite ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " - " ++ (index 1 args))] in
+      zipWith (\op, i =>  record { id = cast i } op) ops (fromList [0..OpsN - 1])
 
 varPosVal : Int -> Tensor [VarsN] String
 varPosVal n = varNames $ "varPosVal" ++ show n
@@ -227,13 +228,17 @@ data' = let f = \x => ite (or [x == bv 0 BitSize, x == bv 1 BitSize, x == bv 2 B
         map (\n => let inp = bv n BitSize in (inp, f inp)) inp
 
 
-runSolver : {instrsN : Nat} -> {auto prf : GT instrsN Z} -> IO ()
-runSolver {instrsN} = do r <- sat $ solver data'
-                         case r of
-                           Nothing => do putStrLn "Error parsing result"
-                           Just (Sat, model) =>
-                              do
-                                 putStrLn $ show $ parseInstrs {n = instrsN} model ops instrNames
-                                 pure ()
-                           Just (UnSat, _) => putStrLn "unsat"
-                           Just (Unknown, _) => putStrLn "unknown"
+runSolver : (instrsN : Nat) -> {auto prf : GT instrsN Z} -> IO ()
+runSolver instrsN = do r <- sat $ solver data'
+                       case r of
+                         Nothing => do putStrLn "Error parsing result"
+                         Just (Sat, model) =>
+                            do
+                               putStrLn $ show $ parseInstrs {n = instrsN} model ops instrNames
+                               pure ()
+                         Just (UnSat, _) => putStrLn "unsat"
+                         Just (Unknown, _) => putStrLn "unknown"
+
+
+run : IO ()
+run = for_ (the (List (IO ())) [runSolver 1, runSolver 2, runSolver 3, runSolver 4]) id
