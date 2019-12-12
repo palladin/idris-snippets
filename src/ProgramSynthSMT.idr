@@ -91,7 +91,7 @@ ArgsN : Nat
 ArgsN = 2
 
 OpsN : Nat
-OpsN = 5
+OpsN = 6
 
 BitSize : Nat
 BitSize = 3
@@ -99,9 +99,10 @@ BitSize = 3
 ops : Vect OpsN (Op ArgsN BitSize)
 ops = let ops = [MkOp 0 (\r, arg => r == bvand (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " & " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " | " ++ (index 1 args)),
-                 MkOp 0 (\r, arg => r == bvnot (index 0 arg)) (\args => "~ " ++ (index 0 args)),
+                 MkOp 0 (\r, arg => r == bvnot (index 0 arg)) (\args => "~" ++ (index 0 args)),
                  MkOp 0 (\r, arg => ite' ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args)),
-                 MkOp 0 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " - " ++ (index 1 args))] in
+                 MkOp 0 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " - " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args))] in
       zipWith (\op, i =>  record { id = cast i } op) ops (fromList [0..OpsN - 1])
 
 varPosVal : Int -> Tensor [VarsN] String
