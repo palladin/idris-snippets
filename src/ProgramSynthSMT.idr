@@ -210,7 +210,7 @@ parseInstrs model ops ((MkInstrName pos isConst constVal opStr args) :: instrs) 
        constVal <- lookup constVal model
        args <- parseArgs model args
        instrs <- parseInstrs model ops instrs
-       pure $ ["instr" ++ show pos ++ " = " ++ (if isConst then constVal else (str op args))] ++ instrs
+       pure $ ["var instr" ++ show pos ++ " = " ++ (if isConst then constVal else (str op args)) ++ ";"] ++ instrs
 
 equiv : Expr a -> Expr a -> Expr a -> (Expr a -> Expr a -> Expr BoolT) -> (Expr a -> Expr a -> Expr BoolT) -> Expr BoolT
 equiv x r r' f g = and [f r x, g r' x, not $ r == r']
@@ -241,19 +241,23 @@ runEquiv = do r <- sat testEquiv
 
 
 data' : List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT)
-data' = let f = \x, r => ite' (or [x == bv 0 BitSize, x == bv 1 BitSize, x == bv 2 BitSize, x == bv 4 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize)) in
+data' = let f = isPowerOfTwo in
         let inp = [0..7] in
         map (\n => let inp = bv n BitSize in (inp, f inp)) inp
-
+  where
+    isPowerOfTwo : Expr (BitVecT BitSize) -> Expr (BitVecT BitSize) -> Expr BoolT
+    isPowerOfTwo x r = ite' (or [x == bv 0 BitSize, x == bv 1 BitSize, x == bv 2 BitSize, x == bv 4 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
 
 runSolver : (instrsN : Nat) -> {auto prf : GT instrsN Z} -> IO ()
 runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'
                              case r of
                                Nothing => do putStrLn "Error parsing result"
                                Just (Sat, model) =>
-                                  do
-                                     putStrLn $ show $ parseInstrs {n = instrsN} model ops instrNames
-                                     pure ()
+                                  case parseInstrs {n = instrsN} model ops instrNames of
+                                    Just instrs =>
+                                      do putStrLn $ unlines $ reverse $ instrs
+                                         pure ()
+                                    Nothing => do putStrLn "Error parsing instrs"
                                Just (UnSat, _) => putStrLn "unsat"
                                Just (Unknown, _) => putStrLn "unknown"
 
