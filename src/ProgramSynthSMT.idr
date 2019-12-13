@@ -141,12 +141,12 @@ instrNames = tabulate (\i => MkInstrName (finToNat i)
                                                                     (index i j (toVect argVarPos))
                                                                     (index i j (toVect argInstrPos)))))
 
-eval : {auto prf : GT instrsN Z} -> Int -> List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT) ->
+eval : {prf : GT instrsN Z} -> Int -> List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT) ->
        Tensor [ArgsN, instrsN] (Expr BoolT) -> Tensor [ArgsN, instrsN] (Expr (BitVecT BitSize)) ->
        Tensor [ArgsN, instrsN] (Expr (BitVecT BitSize)) -> Tensor [instrsN] (Expr (BitVecT BitSize)) ->
        Tensor [instrsN] (Expr BoolT) -> Tensor [instrsN] (Expr (BitVecT BitSize)) -> Smt ()
 eval {instrsN} {prf} n [] argIsVar argVarPos argInstrPos instrOp instrIsConst instrConstVal = pure ()
-eval {instrsN = S instrsN'} {prf = (LTESucc _)} n ((inp, outf) :: xs) argIsVar argVarPos argInstrPos instrOp instrIsConst instrConstVal =
+eval {instrsN = S instrsN'} {prf = (LTESucc LTEZero)} n ((inp, outf) :: xs) argIsVar argVarPos argInstrPos instrOp instrIsConst instrConstVal =
     do vars <- declareVars (varPosVal n) (BitVecT BitSize)
        argVal <- declareVars (argVal {instrsN = S instrsN'} n) (BitVecT BitSize)
        instrVal <- declareVars (instrVal {instrsN = S instrsN'} n) (BitVecT BitSize)
@@ -158,10 +158,10 @@ eval {instrsN = S instrsN'} {prf = (LTESucc _)} n ((inp, outf) :: xs) argIsVar a
        r <- declareVar ("output" ++ show n) (BitVecT BitSize)
        assert $ outf r
        assert $ val (index 0 instrs) == r
-       eval (n + 1) xs argIsVar argVarPos argInstrPos instrOp instrIsConst instrConstVal
+       eval {prf = (LTESucc LTEZero)} (n + 1) xs argIsVar argVarPos argInstrPos instrOp instrIsConst instrConstVal
        pure ()
 
-solver : {instrsN : Nat} -> {auto prf : GT instrsN Z} -> List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT) -> Smt ()
+solver : {instrsN : Nat} -> {prf : GT instrsN Z} -> List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT) -> Smt ()
 solver {instrsN} {prf} xs =
          do setLogic "QF_BV"
             setOption ":pp.bv-literals false"
@@ -179,7 +179,7 @@ solver {instrsN} {prf} xs =
             let args = createArgs (toVect argIsVar) (toVect argVarPos) (toVect argInstrPos) (toVect argVal)
             let instrs = createInstrs (toVect instrIsConst) (toVect instrConstVal) (toVect instrVal) (toVect instrOp) args
             assert $ checkInstr instrs
-            eval (n + 1) xs argIsVar argVarPos argInstrPos instrOp instrIsConst instrConstVal
+            eval {prf = prf} (n + 1) xs argIsVar argVarPos argInstrPos instrOp instrIsConst instrConstVal
             checkSat
             getModel
             end
@@ -247,15 +247,15 @@ data' = let f = \x, r => ite' (or [x == bv 0 BitSize, x == bv 1 BitSize, x == bv
 
 
 runSolver : (instrsN : Nat) -> {auto prf : GT instrsN Z} -> IO ()
-runSolver instrsN = do r <- sat $ solver data'
-                       case r of
-                         Nothing => do putStrLn "Error parsing result"
-                         Just (Sat, model) =>
-                            do
-                               putStrLn $ show $ parseInstrs {n = instrsN} model ops instrNames
-                               pure ()
-                         Just (UnSat, _) => putStrLn "unsat"
-                         Just (Unknown, _) => putStrLn "unknown"
+runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'
+                             case r of
+                               Nothing => do putStrLn "Error parsing result"
+                               Just (Sat, model) =>
+                                  do
+                                     putStrLn $ show $ parseInstrs {n = instrsN} model ops instrNames
+                                     pure ()
+                               Just (UnSat, _) => putStrLn "unsat"
+                               Just (Unknown, _) => putStrLn "unknown"
 
 
 run : IO ()
