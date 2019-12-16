@@ -94,7 +94,7 @@ OpsN : Nat
 OpsN = 6
 
 BitSize : Nat
-BitSize = 3
+BitSize = 4
 
 ops : Vect OpsN (Op ArgsN BitSize)
 ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
@@ -203,15 +203,21 @@ parseArgs {n = (S n)} model ((MkArgName isVar varPos instrPos) :: args) =
 parseInstrs : Model -> Vect opsN (Op argsN size) -> Vect n (InstrName argsN size) -> Maybe (List String)
 parseInstrs model ops [] = Just []
 parseInstrs model ops ((MkInstrName pos isConst constVal opStr args) :: instrs) =
-    do opVal <- lookup opStr model
-       opId <- parseInteger {a = Int} opVal
-       op <- find (\op => id op == opId) ops
-       isConst <- lookup isConst model
+    do isConst <- lookup isConst model
        isConst <- parseBool isConst
        constVal <- lookup constVal model
-       args <- parseArgs model args
-       instrs <- parseInstrs model ops instrs
-       pure $ ["var instr" ++ show pos ++ " = " ++ (if isConst then constVal else (str op args)) ++ ";"] ++ instrs
+       case isConst of
+         True =>
+          do args <- parseArgs model args
+             instrs <- parseInstrs model ops instrs
+             pure $ ["var instr" ++ show pos ++ " = " ++ constVal ++ ";"] ++ instrs
+         False =>
+           do opVal <- lookup opStr model
+              opId <- parseInteger {a = Int} opVal
+              op <- find (\op => id op == opId) ops
+              args <- parseArgs model args
+              instrs <- parseInstrs model ops instrs
+              pure $ ["var instr" ++ show pos ++ " = " ++ (str op args) ++ ";"] ++ instrs
 
 equiv : Expr a -> Expr a -> Expr a -> (Expr a -> Expr a -> Expr BoolT) -> (Expr a -> Expr a -> Expr BoolT) -> Expr BoolT
 equiv x r r' f g = and [f r x, g r' x, not $ r == r']
@@ -243,16 +249,19 @@ runEquiv = do r <- sat testEquiv
 
 data' : List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT)
 data' = let f = isEven in
-        let inp = [0..7] in
+        let inp = [0..15] in
         map (\n => let inp = bv n BitSize in (inp, f inp)) inp
   where
     isPowerOfTwo : Expr (BitVecT BitSize) -> Expr (BitVecT BitSize) -> Expr BoolT
-    isPowerOfTwo x r = ite' (or [x == bv 0 BitSize, x == bv 1 BitSize, x == bv 2 BitSize, x == bv 4 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
+    isPowerOfTwo x r = ite' (or [x == bv 0 BitSize, x == bv 1 BitSize, x == bv 2 BitSize, x == bv 4 BitSize, x == bv 8 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
     isEven : Expr (BitVecT BitSize) -> Expr (BitVecT BitSize) -> Expr BoolT
-    isEven x r = ite' (or [x == bv 0 BitSize, x == bv 2 BitSize, x == bv 4 BitSize, x == bv 6 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
+    isEven x r = ite' (or [x == bv 0 BitSize, x == bv 2 BitSize, x == bv 4 BitSize, x == bv 6 BitSize, x == bv 8 BitSize, x == bv 10 BitSize, x == bv 12 BitSize, x == bv 14 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
+    isPrime : Expr (BitVecT BitSize) -> Expr (BitVecT BitSize) -> Expr BoolT
+    isPrime x r = ite' (or [x == bv 2 BitSize, x == bv 3 BitSize, x == bv 5 BitSize, x == bv 7 BitSize, x == bv 11 BitSize, x == bv 13 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
 
 runSolver : (instrsN : Nat) -> {prf : GTE instrsN 1} -> IO ()
 runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'
+                             --putStrLn $ "model: " ++ show r
                              case r of
                                Nothing => do putStrLn "Error parsing result"
                                Just (Sat, model) =>
