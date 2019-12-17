@@ -94,14 +94,14 @@ OpsN : Nat
 OpsN = 9
 
 BitSize : Nat
-BitSize = 4
+BitSize = 8
 
 ops : Vect OpsN (Op ArgsN BitSize)
 ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
                 [MkOp 0 (\r, arg => r == bvand (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " & " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " | " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvnot (index 0 arg)) (\args => "~" ++ (index 0 args)),
-                 MkOp 0 (\r, arg => ite' ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args) ++ "? 1 : 0"),
+                 MkOp 0 (\r, arg => ite' ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args) ++ " ? 1 : 0"),
                  MkOp 0 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " - " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvadd (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " + " ++ (index 1 args)),
                  --MkOp 0 (\r, arg => r == bvmul (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " * " ++ (index 1 args)),
@@ -254,20 +254,11 @@ runEquiv = do r <- sat testEquiv
 
 
 data' : List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT)
-data' = let f = example in
-        let inp = [5, 10, 11] in
-        map (\n => let inp = bv n BitSize in (inp, f inp)) inp
+data' = let inp = isPowerOfTwo in
+        map (\(a, b) => (bv a BitSize, \r => r == bv b BitSize)) inp
   where
-    isPowerOfTwo : Expr (BitVecT BitSize) -> Expr (BitVecT BitSize) -> Expr BoolT
-    isPowerOfTwo x r = ite' (or [x == bv 0 BitSize, x == bv 1 BitSize, x == bv 2 BitSize, x == bv 4 BitSize, x == bv 8 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
-    isEven : Expr (BitVecT BitSize) -> Expr (BitVecT BitSize) -> Expr BoolT
-    isEven x r = ite' (or [x == bv 0 BitSize, x == bv 2 BitSize, x == bv 4 BitSize, x == bv 6 BitSize, x == bv 8 BitSize, x == bv 10 BitSize, x == bv 12 BitSize, x == bv 14 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
-    isPrime : Expr (BitVecT BitSize) -> Expr (BitVecT BitSize) -> Expr BoolT
-    isPrime x r = ite' (or [x == bv 2 BitSize, x == bv 3 BitSize, x == bv 5 BitSize, x == bv 7 BitSize, x == bv 11 BitSize, x == bv 13 BitSize]) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))
-    example : Expr (BitVecT BitSize) -> Expr (BitVecT BitSize) -> Expr BoolT
-    example x r = ite' (x == bv 5 BitSize) (r == bv 4 BitSize)
-                    (ite' (x == bv 10 BitSize) (r == bv 8 BitSize)
-                      (ite' (x == bv 11 BitSize) (r == bv 8 BitSize) (bool True)))
+    isPowerOfTwo : List (Int, Int)
+    isPowerOfTwo = [(2, 1), (3, 0), (4, 1), (5, 0), (6, 0), (8, 1)]
 
 runSolver : (instrsN : Nat) -> {prf : GTE instrsN 1} -> IO ()
 runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'
