@@ -91,7 +91,7 @@ ArgsN : Nat
 ArgsN = 2
 
 OpsN : Nat
-OpsN = 9
+OpsN = 8
 
 BitSize : Nat
 BitSize = 8
@@ -106,8 +106,8 @@ ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
                  MkOp 0 (\r, arg => r == bvadd (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " + " ++ (index 1 args)),
                  --MkOp 0 (\r, arg => r == bvmul (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " * " ++ (index 1 args)),
                  --MkOp 0 (\r, arg => r == bvurem (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " % " ++ (index 1 args)),
-                 MkOp 0 (\r, arg => r == bvshl (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
-                 MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " << " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvshl (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " << " ++ (index 1 args)),
+                 --MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args))] in
       zipWith (\op, i =>  record { id = cast i } op) ops (fromList [0..OpsN - 1])
 
@@ -170,6 +170,8 @@ eval {instrsN = S instrsN'} {prf = (LTESucc LTEZero)} n ((inp, outf) :: xs) argI
 solver : {instrsN : Nat} -> {prf : GTE instrsN 1} -> List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT) -> Smt ()
 solver {instrsN} {prf} xs =
          do setLogic "QF_BV"
+            setOption ":timeout 60000"
+            setOption ":parallel.enable true"
             setOption ":pp.bv-literals false"
             let n = 0
             argIsVar <- declareVars (argIsVar {instrsN = instrsN}) BoolT
@@ -254,11 +256,17 @@ runEquiv = do r <- sat testEquiv
 
 
 data' : List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT)
-data' = let inp = isPowerOfTwo in
+data' = let inp = example in
         map (\(a, b) => (bv a BitSize, \r => r == bv b BitSize)) inp
   where
     isPowerOfTwo : List (Int, Int)
     isPowerOfTwo = [(2, 1), (3, 0), (4, 1), (5, 0), (6, 0), (8, 1)]
+    isEven : List (Int, Int)
+    isEven = [(2, 1), (3, 0), (4, 1), (5, 0), (6, 1), (7, 0)]
+    primes : List (Int, Int)
+    primes = [(2, 3), (3, 5), (5, 7), (7, 11), (11, 13), (17, 19), (19, 23)]
+    example : List (Int, Int)
+    example = [(5, 4), (10, 8), (22, 16)]
 
 runSolver : (instrsN : Nat) -> {prf : GTE instrsN 1} -> IO ()
 runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'
