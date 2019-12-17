@@ -26,6 +26,9 @@ data Expr : TypeT -> Type where
   BvAddExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvSubExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvMulExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvURemExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvShLExpr :  Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvLShRExpr :  Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvNegExpr : Expr (BitVecT n) -> Expr (BitVecT n)
   BvAndExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvOrExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
@@ -65,6 +68,15 @@ bvsub l r = BvSubExpr l r
 
 bvmul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
 bvmul l r = BvMulExpr l r
+
+bvurem : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvurem l r = BvURemExpr l r
+
+bvshl : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvshl l r = BvShLExpr l r
+
+bvlshr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvlshr l r = BvLShRExpr l r
 
 bvneg : Expr (BitVecT n) -> Expr (BitVecT n)
 bvneg x = BvNegExpr x
@@ -177,6 +189,9 @@ compileExpr (IntExpr x) = show x
 compileExpr (RealExpr x) = show x
 compileExpr (BvAddExpr l r) = "(bvadd " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvMulExpr l r) = "(bvmul " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvURemExpr l r) = "(bvurem " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvShLExpr l r) = "(bvshl " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvLShRExpr l r) = "(bvlshr " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvNegExpr x) = "(bvneg " ++ compileExpr x ++ ")"
 compileExpr (BvAndExpr l r) = "(bvand " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvSubExpr l r) = "(bvsub " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"

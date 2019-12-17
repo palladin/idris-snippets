@@ -91,7 +91,7 @@ ArgsN : Nat
 ArgsN = 2
 
 OpsN : Nat
-OpsN = 6
+OpsN = 11
 
 BitSize : Nat
 BitSize = 4
@@ -103,6 +103,11 @@ ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
                  MkOp 0 (\r, arg => r == bvnot (index 0 arg)) (\args => "~" ++ (index 0 args)),
                  MkOp 0 (\r, arg => ite' ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " - " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvadd (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " + " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvmul (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " * " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvurem (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " % " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvshl (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " << " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args))] in
       zipWith (\op, i =>  record { id = cast i } op) ops (fromList [0..OpsN - 1])
 
@@ -219,17 +224,18 @@ parseInstrs model ops ((MkInstrName pos isConst constVal opStr args) :: instrs) 
               instrs <- parseInstrs model ops instrs
               pure $ ["var instr" ++ show pos ++ " = " ++ (str op args) ++ ";"] ++ instrs
 
-equiv : Expr a -> Expr a -> Expr a -> (Expr a -> Expr a -> Expr BoolT) -> (Expr a -> Expr a -> Expr BoolT) -> Expr BoolT
-equiv x r r' f g = and [f r x, g r' x, not $ r == r']
+equiv : Vect n (Expr a) -> Expr a -> Expr a -> (Expr a -> Vect n (Expr a) -> Expr BoolT) -> (Expr a -> Vect n (Expr a) -> Expr BoolT) -> Expr BoolT
+equiv xs r r' f g = and [f r xs, g r' xs, not $ r == r']
 
 testEquiv : Smt ()
 testEquiv = let size = 64 in
             do setLogic "QF_BV"
-               x <- declareVar "x" (BitVecT size)
+               setOption ":pp.bv-literals false"
+               xs <- declareVars {f = Vect 3} ["a", "b", "c"] (BitVecT size)
                r <- declareVar "r" (BitVecT size)
                r' <- declareVar "_r" (BitVecT size)
-               assert $ equiv x r r' (\r, x => ite' (bvor x (bvsub (bvsub x x) x) == bvsub (bvsub x x) x) (r == (bv 1 size)) (r == (bv 0 size)))
-                                     (\r, x => ite' ((bv 0 size) == (bvand x (bvsub x (bv 1 size)))) (r == (bv 1 size)) (r == (bv 0 size)))
+               assert $ equiv xs r r' (\r, xs => r == ((((index 0 xs) `bvmul` (index 0 xs)) `bvmul` (index 0 xs)) `bvadd` (((index 1 xs) `bvmul` (index 1 xs)) `bvmul` (index 1 xs))))
+                                      (\r, xs => r == (((index 2 xs) `bvmul` (index 2 xs)) `bvmul` (index 2 xs)))
                checkSat
                getModel
                end
