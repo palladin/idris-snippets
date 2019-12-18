@@ -91,10 +91,10 @@ ArgsN : Nat
 ArgsN = 2
 
 OpsN : Nat
-OpsN = 8
+OpsN = 10
 
 BitSize : Nat
-BitSize = 8
+BitSize = 32
 
 ops : Vect OpsN (Op ArgsN BitSize)
 ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
@@ -107,7 +107,8 @@ ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
                  --MkOp 0 (\r, arg => r == bvmul (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " * " ++ (index 1 args)),
                  --MkOp 0 (\r, arg => r == bvurem (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " % " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvshl (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " << " ++ (index 1 args)),
-                 --MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => "(uint)" ++ (index 0 args) ++ " >> " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvashr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args))] in
       zipWith (\op, i =>  record { id = cast i } op) ops (fromList [0..OpsN - 1])
 
@@ -170,7 +171,7 @@ eval {instrsN = S instrsN'} {prf = (LTESucc LTEZero)} n ((inp, outf) :: xs) argI
 solver : {instrsN : Nat} -> {prf : GTE instrsN 1} -> List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT) -> Smt ()
 solver {instrsN} {prf} xs =
          do setLogic "QF_BV"
-            setOption ":timeout 60000"
+            setOption ":timeout 120000"
             setOption ":parallel.enable true"
             setOption ":pp.bv-literals false"
             let n = 0
@@ -266,7 +267,7 @@ data' = let inp = example in
     primes : List (Int, Int)
     primes = [(2, 3), (3, 5), (5, 7), (7, 11), (11, 13), (17, 19), (19, 23)]
     example : List (Int, Int)
-    example = [(5, 4), (10, 8), (22, 16)]
+    example = [(1, 1), (2, 2), (5, 1000), (6, 6)]
 
 runSolver : (instrsN : Nat) -> {prf : GTE instrsN 1} -> IO ()
 runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'
