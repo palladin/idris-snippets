@@ -88,10 +88,10 @@ VarsN : Nat
 VarsN = 1
 
 ArgsN : Nat
-ArgsN = 2
+ArgsN = 3
 
 OpsN : Nat
-OpsN = 10
+OpsN = 11
 
 BitSize : Nat
 BitSize = 32
@@ -100,15 +100,17 @@ ops : Vect OpsN (Op ArgsN BitSize)
 ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
                 [MkOp 0 (\r, arg => r == bvand (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " & " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " | " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvxor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " ^ " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvnot (index 0 arg)) (\args => "~" ++ (index 0 args)),
                  MkOp 0 (\r, arg => ite' ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args) ++ " ? 1 : 0"),
                  MkOp 0 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " - " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvadd (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " + " ++ (index 1 args)),
-                 --MkOp 0 (\r, arg => r == bvmul (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " * " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => r == bvmul (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " * " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => ite' ((index 0 arg) == bv 1 BitSize) (r == (index 1 arg)) (r == (index 2 arg))) (\args => (index 0 args) ++ " == 1 ? " ++ (index 1 args) ++ " : " ++ (index 2 args)),
                  --MkOp 0 (\r, arg => r == bvurem (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " % " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvshl (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " << " ++ (index 1 args)),
-                 MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => "(uint)" ++ (index 0 args) ++ " >> " ++ (index 1 args)),
-                 MkOp 0 (\r, arg => r == bvashr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
+                 --MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => "(uint)" ++ (index 0 args) ++ " >> " ++ (index 1 args)),
+                 --MkOp 0 (\r, arg => r == bvashr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args))] in
       zipWith (\op, i =>  record { id = cast i } op) ops (fromList [0..OpsN - 1])
 
@@ -218,7 +220,7 @@ parseInstrs model ops ((MkInstrName pos isConst constVal opStr args) :: instrs) 
          True =>
           do args <- parseArgs model args
              instrs <- parseInstrs model ops instrs
-             pure $ ["int instr" ++ show pos ++ " = " ++ constVal ++ ";"] ++ instrs
+             pure $ ["int instr" ++ show pos ++ " = (int)" ++ constVal ++ ";"] ++ instrs
          False =>
            do opVal <- lookup opStr model
               opId <- parseInteger {a = Int} opVal
@@ -267,7 +269,7 @@ data' = let inp = example in
     primes : List (Int, Int)
     primes = [(2, 3), (3, 5), (5, 7), (7, 11), (11, 13), (17, 19), (19, 23)]
     example : List (Int, Int)
-    example = [(1, 1), (2, 2), (5, 1000), (6, 6)]
+    example = [(1, 43), (2, 40), (3, 41), (4, 46)]
 
 runSolver : (instrsN : Nat) -> {prf : GTE instrsN 1} -> IO ()
 runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'

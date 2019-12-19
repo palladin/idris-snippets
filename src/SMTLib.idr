@@ -33,6 +33,7 @@ data Expr : TypeT -> Type where
   BvNegExpr : Expr (BitVecT n) -> Expr (BitVecT n)
   BvAndExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvOrExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvXorExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvNotExpr : Expr (BitVecT n) -> Expr (BitVecT n)
   IntExpr : Int -> Expr (NumT IntT)
   RealExpr : Double -> Expr (NumT RealT)
@@ -90,6 +91,9 @@ bvand l r = BvAndExpr l r
 
 bvor : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
 bvor l r = BvOrExpr l r
+
+bvxor : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvxor l r = BvXorExpr l r
 
 bvnot : Expr (BitVecT n) -> Expr (BitVecT n)
 bvnot x = BvNotExpr x
@@ -201,6 +205,7 @@ compileExpr (BvNegExpr x) = "(bvneg " ++ compileExpr x ++ ")"
 compileExpr (BvAndExpr l r) = "(bvand " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvSubExpr l r) = "(bvsub " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvOrExpr l r) = "(bvor " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvXorExpr l r) = "(bvxor " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvNotExpr x) = "(bvnot " ++ compileExpr x ++ ")"
 compileExpr (AddExpr xs) = "(+ " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (MulExpr xs) = "(* " ++ (unlines . toList . map compileExpr) xs ++ ")"
