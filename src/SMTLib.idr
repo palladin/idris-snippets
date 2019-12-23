@@ -26,7 +26,10 @@ data Expr : TypeT -> Type where
   BvAddExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvSubExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvMulExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvUDivExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvURemExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvSDivExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+  BvSModExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvShLExpr :  Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvLShRExpr :  Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvAShRExpr :  Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
@@ -35,6 +38,14 @@ data Expr : TypeT -> Type where
   BvOrExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvXorExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvNotExpr : Expr (BitVecT n) -> Expr (BitVecT n)
+  BvULeExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+  BvULtExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+  BvUGeExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+  BvUGtExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+  BvSLeExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+  BvSLtExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+  BvSGeExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+  BvSGtExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
   IntExpr : Int -> Expr (NumT IntT)
   RealExpr : Double -> Expr (NumT RealT)
   AddExpr : Vect n (Expr (NumT a)) -> Expr (NumT a)
@@ -71,6 +82,15 @@ bvsub l r = BvSubExpr l r
 bvmul : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
 bvmul l r = BvMulExpr l r
 
+bvsdiv : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvsdiv l r = BvSDivExpr l r
+
+bvsmod : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvsmod l r = BvSModExpr l r
+
+bvudiv : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
+bvudiv l r = BvUDivExpr l r
+
 bvurem : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
 bvurem l r = BvURemExpr l r
 
@@ -97,6 +117,30 @@ bvxor l r = BvXorExpr l r
 
 bvnot : Expr (BitVecT n) -> Expr (BitVecT n)
 bvnot x = BvNotExpr x
+
+bvule : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+bvule l r = BvULeExpr l r
+
+bvult : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+bvult l r = BvULtExpr l r
+
+bvuge : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+bvuge l r = BvUGeExpr l r
+
+bvugt : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+bvugt l r = BvUGtExpr l r
+
+bvsle : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+bvsle l r = BvSLeExpr l r
+
+bvslt : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+bvslt l r = BvSLtExpr l r
+
+bvsge : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+bvsge l r = BvSGeExpr l r
+
+bvsgt : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr BoolT
+bvsgt l r = BvSGtExpr l r
 
 (+) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
 (+) l r = AddExpr [l, r]
@@ -197,6 +241,9 @@ compileExpr (IntExpr x) = show x
 compileExpr (RealExpr x) = show x
 compileExpr (BvAddExpr l r) = "(bvadd " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvMulExpr l r) = "(bvmul " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvSDivExpr l r) = "(bvsdiv " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvSModExpr l r) = "(bvsmod " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvUDivExpr l r) = "(bvudiv " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvURemExpr l r) = "(bvurem " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvShLExpr l r) = "(bvshl " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvLShRExpr l r) = "(bvlshr " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
@@ -207,6 +254,14 @@ compileExpr (BvSubExpr l r) = "(bvsub " ++ compileExpr l ++ " " ++ compileExpr r
 compileExpr (BvOrExpr l r) = "(bvor " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvXorExpr l r) = "(bvxor " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvNotExpr x) = "(bvnot " ++ compileExpr x ++ ")"
+compileExpr (BvULeExpr l r) = "(bvule " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvULtExpr l r) = "(bvult " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvUGeExpr l r) = "(bvuge " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvUGtExpr l r) = "(bvugt " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvSLeExpr l r) = "(bvsle " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvSLtExpr l r) = "(bvslt " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvSGeExpr l r) = "(bvsge " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (BvSGtExpr l r) = "(bvsgt " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (AddExpr xs) = "(+ " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (MulExpr xs) = "(* " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (EqualExpr l r) = "(= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
