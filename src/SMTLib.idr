@@ -376,7 +376,7 @@ sat smt = do _ <- writeFile "input.smt2" $ compile smt
              r <- readFile "output.smt2"
              case r of
                Left err => do printLn err; pure Nothing
-               Right str => let r = parseResult $ lines str in
+               Right str => let r = parseResult $ filter (\line => not $ line == "") $ lines str in
                             case r of
                               Nothing => do putStrLn "Error parsing result"; pure Nothing
                               Just (Sat, xs) => let r = parseModel xs in
