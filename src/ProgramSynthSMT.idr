@@ -44,12 +44,12 @@ record InstrName (argsN : Nat) (size : Nat) where
 
 record Op (argsN : Nat) (size : Nat) where
   constructor MkOp
-  id : Int
+  id : Integer
   func : Expr (BitVecT size) -> Vect argsN (Expr (BitVecT size)) -> Expr BoolT
   str : Vect argsN String -> String
 
 createVarPos : Vect n (Expr (BitVecT size)) -> Vect n (VarPos size)
-createVarPos {n} {size} vs = tabulate (\i => MkVar (bv (finToInt i) size) (index i vs))
+createVarPos {n} {size} vs = tabulate (\i => MkVar (bv (finToInteger i) size) (index i vs))
 
 lookupVar : Expr (BitVecT size) -> Expr (BitVecT size) -> Vect n (VarPos size) -> Expr BoolT
 lookupVar p v vs = or [ite' (p == pos vp) (v == val vp) (bool False) | vp <- vs]
@@ -58,7 +58,7 @@ createArgs : Vect n (Vect argsN (Expr BoolT)) -> Vect n (Vect argsN (Expr (BitVe
 createArgs isVars vars instrs vals = tabulate (\i0 => tabulate (\i1 => MkArg (index i0 i1 isVars) (index i0 i1 vars) (index i0 i1 instrs) (index i0 i1 vals)))
 
 createInstrs : Vect n (Expr BoolT) -> Vect n (Expr (BitVecT size)) -> Vect n (Expr (BitVecT size)) -> Vect n (Expr (BitVecT size)) -> Vect n (Vect argsN (Arg size)) -> Vect n (Instr argsN size)
-createInstrs {size} isConsts constVals vals ops args = tabulate (\i => MkInstr (bv (finToInt i) size) (index i isConsts) (index i constVals) (index i vals) (index i ops) (index i args))
+createInstrs {size} isConsts constVals vals ops args = tabulate (\i => MkInstr (bv (finToInteger i) size) (index i isConsts) (index i constVals) (index i vals) (index i ops) (index i args))
 
 lookupInstr : Expr (BitVecT size) -> Expr (BitVecT size) -> Vect n (Instr argsN size) -> Expr BoolT
 lookupInstr p v instrs = or [ite' (p == pos instr) (v == val instr) (bool False) | instr <- instrs]
@@ -91,7 +91,7 @@ ArgsN : Nat
 ArgsN = 3
 
 OpsN : Nat
-OpsN = 11
+OpsN = 16
 
 BitSize : Nat
 BitSize = 32
@@ -102,20 +102,21 @@ ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
                  MkOp 0 (\r, arg => r == bvor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " | " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvxor (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " ^ " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvnot (index 0 arg)) (\args => "~" ++ (index 0 args)),
-                 MkOp 0 (\r, arg => ite' ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args) ++ " ? 1 : 0"),
+                 MkOp 0 (\r, arg => ite' ((index 0 arg) == (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " == " ++ (index 1 args) ++ " ? (uint)1 : 0"),
                  MkOp 0 (\r, arg => r == bvsub (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " - " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvadd (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " + " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvmul (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " * " ++ (index 1 args)),
                  MkOp 0 (\r, arg => ite' ((index 0 arg) == bv 1 BitSize) (r == (index 1 arg)) (r == (index 2 arg))) (\args => (index 0 args) ++ " == 1 ? " ++ (index 1 args) ++ " : " ++ (index 2 args)),
-                 --MkOp 0 (\r, arg => ite' ((index 1 arg) == bv 0 BitSize) (r == bv 1 BitSize) (r == bvudiv (index 0 arg) (index 1 arg))) (\args => (index 1 args) ++ " == 0 ? (uint)1 : " ++ (index 0 args) ++ " / " ++ (index 1 args)),
+                 MkOp 0 (\r, arg => ite' ((index 1 arg) == bv 0 BitSize) (r == bv 1 BitSize) (r == bvudiv (index 0 arg) (index 1 arg))) (\args => (index 1 args) ++ " == 0 ? (uint)1 : " ++ (index 0 args) ++ " / " ++ (index 1 args)),
                  --MkOp 0 (\r, arg => ite' ((index 1 arg) == bv 0 BitSize) (r == index 0 arg) (r == bvurem (index 0 arg) (index 1 arg))) (\args => (index 1 args) ++ " == 0 ? (uint)1 : " ++ (index 0 args) ++ " % " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvshl (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " << " ++ (index 1 args)),
-                 MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args))] in
-                 -- MkOp 0 (\r, arg => ite' (bvule (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize)))  (\args => (index 0 args) ++ " <= " ++ (index 1 args) ++ " ? 1 : 0"),
-                 -- MkOp 0 (\r, arg => ite' (bvult (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " < " ++ (index 1 args) ++ " ? 1 : 0"),
-                 -- MkOp 0 (\r, arg => ite' (bvuge (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " >= " ++ (index 1 args) ++ " ? 1 : 0"),
-                 -- MkOp 0 (\r, arg => ite' (bvugt (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " > " ++ (index 1 args) ++ " ? 1 : 0")] in
-                 -- MkOp 0 (\r, arg => ite' (bvsle (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " <= " ++ (index 1 args) ++ " ? 1 : 0"),
+                 MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
+                 --MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args))] in
+                 MkOp 0 (\r, arg => ite' (bvule (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize)))  (\args => (index 0 args) ++ " <= " ++ (index 1 args) ++ " ? (uint)1 : 0"),
+                 MkOp 0 (\r, arg => ite' (bvult (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " < " ++ (index 1 args) ++ " ? (uint)1 : 0"),
+                 MkOp 0 (\r, arg => ite' (bvuge (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " >= " ++ (index 1 args) ++ " ? (uint)1 : 0"),
+                 MkOp 0 (\r, arg => ite' (bvugt (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " > " ++ (index 1 args) ++ " ? (uint)1 : 0")] in
+                 --MkOp 0 (\r, arg => ite' (bvsle (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " <= " ++ (index 1 args) ++ " ? 1 : 0"),
                  -- MkOp 0 (\r, arg => ite' (bvslt (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " < " ++ (index 1 args) ++ " ? 1 : 0"),
                  -- MkOp 0 (\r, arg => ite' (bvsge (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " >= " ++ (index 1 args) ++ " ? 1 : 0"),
                  -- MkOp 0 (\r, arg => ite' (bvsgt (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " > " ++ (index 1 args) ++ " ? 1 : 0")] in
@@ -227,14 +228,14 @@ parseInstrs model ops ((MkInstrName pos isConst constVal opStr args) :: instrs) 
          True =>
           do args <- parseArgs model args
              instrs <- parseInstrs model ops instrs
-             pure $ ["int instr" ++ show pos ++ " = (int)" ++ constVal ++ ";"] ++ instrs
+             pure $ ["uint instr" ++ show pos ++ " = " ++ constVal ++ ";"] ++ instrs
          False =>
            do opVal <- lookup opStr model
-              opId <- parseInteger {a = Int} opVal
+              opId <- parseInteger {a = Integer} opVal
               op <- find (\op => id op == opId) ops
               args <- parseArgs model args
               instrs <- parseInstrs model ops instrs
-              pure $ ["int instr" ++ show pos ++ " = " ++ (str op args) ++ ";"] ++ instrs
+              pure $ ["uint instr" ++ show pos ++ " = " ++ (str op args) ++ ";"] ++ instrs
 
 equiv : Vect n (Expr a) -> Expr a -> Expr a -> (Expr a -> Vect n (Expr a) -> Expr BoolT) -> (Expr a -> Vect n (Expr a) -> Expr BoolT) -> Expr BoolT
 equiv xs r r' f g = and [f r xs, g r' xs, not $ r == r']
@@ -266,17 +267,17 @@ runEquiv = do r <- sat testEquiv
 
 
 data' : List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT)
-data' = let inp = isEven in
+data' = let inp = example in
         map (\(a, b) => (bv a BitSize, \r => r == bv b BitSize)) inp
   where
-    isPowerOfTwo : List (Int, Int)
+    isPowerOfTwo : List (Integer, Integer)
     isPowerOfTwo = [(2, 1), (3, 0), (4, 1), (5, 0), (6, 0), (8, 1)]
-    isEven : List (Int, Int)
+    isEven : List (Integer, Integer)
     isEven = [(0, 1), (1, 0), (2, 1), (3, 0), (4, 1), (5, 0), (6, 1), (7, 0)]
-    primes : List (Int, Int)
+    primes : List (Integer, Integer)
     primes = [(2, 3), (3, 5), (5, 7), (7, 11), (11, 13), (17, 19), (19, 23)]
-    example : List (Int, Int)
-    example = [(0, 0), (1, 0), (2, 0), (3, 1), (4, 1), (5, 1), (6, 0), (7, 0), (8, 0)]
+    example : List (Integer, Integer)
+    example = [(313131323, 2646464646)]
 
 runSolver : (instrsN : Nat) -> {prf : GTE instrsN 1} -> IO ()
 runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'
