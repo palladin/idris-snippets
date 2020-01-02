@@ -74,8 +74,8 @@ lookupOp {size} opPos instrVal args ops = or [ite' (opPos == (bv (id op) size)) 
 
 checkInstr : Vect n (Instr argsN size) -> Expr BoolT
 checkInstr [] = bool True
-checkInstr [instr] = and [isVar arg == bool True | arg <- args instr]
-checkInstr (instr :: instrs) = and $ [or [instrPos arg == pos instr' | instr' <- instrs] | arg <- args instr] ++ [checkInstr instrs]
+checkInstr [instr] = and $ [constVal instr `bvule` bv 65000 size] ++ [isVar arg == bool True | arg <- args instr]
+checkInstr (instr :: instrs) = and $ [constVal instr `bvule` bv 65000 size] ++ [or [instrPos arg == pos instr' | instr' <- instrs] | arg <- args instr] ++ [checkInstr instrs]
 
 evalInstr : Vect opsN (Op argsN size) -> Vect varsN (VarPos size) -> Vect instrsN (Instr argsN size) -> Expr BoolT
 evalInstr {argsN} ops vars instrs = and [ite' (isConst instr) (val instr == constVal instr) (and [assocArg vars instrs instr, lookupOp (op instr) (val instr) (map val $ args instr) ops]) | instr <- instrs]
@@ -91,7 +91,7 @@ ArgsN : Nat
 ArgsN = 3
 
 OpsN : Nat
-OpsN = 16
+OpsN = 17
 
 BitSize : Nat
 BitSize = 32
@@ -111,7 +111,7 @@ ops = let ops = the (Vect OpsN (Op ArgsN BitSize))
                  --MkOp 0 (\r, arg => ite' ((index 1 arg) == bv 0 BitSize) (r == index 0 arg) (r == bvurem (index 0 arg) (index 1 arg))) (\args => (index 1 args) ++ " == 0 ? (uint)1 : " ++ (index 0 args) ++ " % " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvshl (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " << " ++ (index 1 args)),
                  MkOp 0 (\r, arg => r == bvlshr (index 0 arg) (index 1 arg)) (\args => (index 0 args) ++ " >> " ++ (index 1 args)),
-                 --MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args))] in
+                 MkOp 0 (\r, arg => r == bvneg (index 0 arg)) (\args => "-" ++ (index 0 args)),
                  MkOp 0 (\r, arg => ite' (bvule (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize)))  (\args => (index 0 args) ++ " <= " ++ (index 1 args) ++ " ? (uint)1 : 0"),
                  MkOp 0 (\r, arg => ite' (bvult (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " < " ++ (index 1 args) ++ " ? (uint)1 : 0"),
                  MkOp 0 (\r, arg => ite' (bvuge (index 0 arg) (index 1 arg)) (r == (bv 1 BitSize)) (r == (bv 0 BitSize))) (\args => (index 0 args) ++ " >= " ++ (index 1 args) ++ " ? (uint)1 : 0"),
@@ -181,8 +181,9 @@ eval {instrsN = S instrsN'} {prf = (LTESucc LTEZero)} n ((inp, outf) :: xs) argI
 solver : {instrsN : Nat} -> {prf : GTE instrsN 1} -> List (Expr (BitVecT BitSize), Expr (BitVecT BitSize) -> Expr BoolT) -> Smt ()
 solver {instrsN} {prf} xs =
          do setLogic "QF_BV"
-            setOption ":timeout 240000"
+            setOption ":timeout 600000"
             setOption ":parallel.enable true"
+            setOption ":model_validate true"
             setOption ":pp.bv-literals false"
             let n = 0
             argIsVar <- declareVars (argIsVar {instrsN = instrsN}) BoolT
@@ -244,6 +245,7 @@ testEquiv : Smt ()
 testEquiv = let size = 64 in
             do setLogic "QF_BV"
                setOption ":pp.bv-literals false"
+               setOption ":model_validate true"
                xs <- declareVars {f = Vect 3} ["a", "b", "c"] (BitVecT size)
                r <- declareVar "r" (BitVecT size)
                r' <- declareVar "_r" (BitVecT size)
@@ -277,7 +279,7 @@ data' = let inp = example in
     primes : List (Integer, Integer)
     primes = [(2, 3), (3, 5), (5, 7), (7, 11), (11, 13), (17, 19), (19, 23)]
     example : List (Integer, Integer)
-    example = [(313131323, 2646464646)]
+    example = [(0, 2646464646)]
 
 runSolver : (instrsN : Nat) -> {prf : GTE instrsN 1} -> IO ()
 runSolver instrsN {prf} = do r <- sat $ solver {prf = prf} data'
