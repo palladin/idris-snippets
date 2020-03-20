@@ -49,6 +49,7 @@ data Expr : TypeT -> Type where
   IntExpr : Int -> Expr (NumT IntT)
   RealExpr : Double -> Expr (NumT RealT)
   AddExpr : Vect n (Expr (NumT a)) -> Expr (NumT a)
+  MinusExpr : Vect n (Expr (NumT a)) -> Expr (NumT a)
   MulExpr : Vect n (Expr (NumT a)) -> Expr (NumT a)
   EqualExpr : Expr a -> Expr a -> Expr BoolT
   DistinctExpr : Vect n (Expr a) -> Expr BoolT
@@ -147,6 +148,9 @@ bvsgt l r = BvSGtExpr l r
 
 (+) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
 (+) l r = AddExpr [l, r]
+
+(-) : Expr (NumT a) -> Expr (NumT a) -> Expr (NumT a)
+(-) l r = MinusExpr [l, r]
 
 add : Vect n (Expr (NumT a)) -> Expr (NumT a)
 add xs = AddExpr xs
@@ -276,6 +280,7 @@ compileExpr (BvSLtExpr l r) = "(bvslt " ++ compileExpr l ++ " " ++ compileExpr r
 compileExpr (BvSGeExpr l r) = "(bvsge " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (BvSGtExpr l r) = "(bvsgt " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (AddExpr xs) = "(+ " ++ (unlines . toList . map compileExpr) xs ++ ")"
+compileExpr (MinusExpr xs) = "(- " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (MulExpr xs) = "(* " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (EqualExpr l r) = "(= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (DistinctExpr xs) = "(distinct " ++ (unlines . toList . map compileExpr) xs ++ ")"

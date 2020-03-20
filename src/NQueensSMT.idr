@@ -13,12 +13,18 @@ columns = toTensor $ tabulate (\i => "c_" ++ show (finToNat i))
 rows : Tensor [N] String
 rows = toTensor $ tabulate (\i => "r_" ++ show (finToNat i))
 
-constrs : Vect N (Expr (NumT IntT)) -> Vect N (Expr (NumT IntT)) -> Expr BoolT
-constrs cols rows = and [c >= (int 0) && c < (int (toIntNat N)) && r >= (int 0) && r < (int (toIntNat N)) | (c, r) <- zip cols rows] 
+constrs : Vect n (Expr (NumT IntT)) -> Expr BoolT
+constrs {n} xs = and [x >= (int 0) && x < (int (toIntNat n)) | x <- xs]
 
-abs : Expr (NumT IntT) -> Expr (NumT IntT)
-abs x = ite (x > (int 0)) x (x * (int (-1)))
 
+diags : Vect n (Expr (NumT IntT)) -> Vect n (Expr (NumT IntT)) -> Expr BoolT
+diags [] [] = ?foo_2
+diags (col :: cols) (row :: rows) = let cs = map (\col' => abs col - abs col') cols in
+                                    let rs = map (\row' => abs row - abs row') rows in
+                                    and $ map (\(c, r) => not $ c == r) $ zip cs rs 
+  where
+    abs : Expr (NumT IntT) -> Expr (NumT IntT)
+    abs x = ite (x > (int 0)) x (x * (int (-1)))
 
 solver : Smt ()
 solver = do cols <- declareVars columns (NumT IntT)
@@ -27,7 +33,9 @@ solver = do cols <- declareVars columns (NumT IntT)
             let rows = toVect rows
             assert $ distinct cols
             assert $ distinct rows
-            assert $ constrs cols rows
+            assert $ constrs cols
+            assert $ constrs rows
+            assert $ diags cols rows
             checkSat
             getModel
             end
