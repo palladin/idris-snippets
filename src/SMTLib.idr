@@ -52,7 +52,10 @@ data Expr : TypeT -> Type where
   MulExpr : Vect n (Expr (NumT a)) -> Expr (NumT a)
   EqualExpr : Expr a -> Expr a -> Expr BoolT
   DistinctExpr : Vect n (Expr a) -> Expr BoolT
+  LessExpr : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
   LessOrEqualExpr : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
+  GreaterExpr : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
+  GreaterOrEqualExpr : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
   AndExpr : Vect n (Expr BoolT) -> Expr BoolT
   OrExpr : Vect n (Expr BoolT) -> Expr BoolT
   NotExpr : Expr BoolT -> Expr BoolT
@@ -160,8 +163,18 @@ mul xs = MulExpr xs
 distinct : Vect n (Expr a) -> Expr BoolT
 distinct xs = DistinctExpr xs
 
+(<) : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
+(<) l r = LessExpr l r
+
 (<=) : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
 (<=) l r = LessOrEqualExpr l r
+
+(>) : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
+(>) l r = GreaterExpr l r
+
+(>=) : Expr (NumT a) -> Expr (NumT a) -> Expr BoolT
+(>=) l r = GreaterOrEqualExpr l r
+
 
 (&&) : Expr BoolT -> Expr BoolT -> Expr BoolT
 (&&) l r = AndExpr [l, r]
@@ -266,7 +279,10 @@ compileExpr (AddExpr xs) = "(+ " ++ (unlines . toList . map compileExpr) xs ++ "
 compileExpr (MulExpr xs) = "(* " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (EqualExpr l r) = "(= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (DistinctExpr xs) = "(distinct " ++ (unlines . toList . map compileExpr) xs ++ ")"
+compileExpr (LessExpr l r) = "(< " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (LessOrEqualExpr l r) = "(<= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (GreaterExpr l r) = "(> " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
+compileExpr (GreaterOrEqualExpr l r) = "(>= " ++ compileExpr l ++ " " ++ compileExpr r ++ ")"
 compileExpr (AndExpr xs) = "(and " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (OrExpr xs) = "(or " ++ (unlines . toList . map compileExpr) xs ++ ")"
 compileExpr (NotExpr x) = "(not " ++ compileExpr x ++ ")"
