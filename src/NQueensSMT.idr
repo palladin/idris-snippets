@@ -18,13 +18,14 @@ constrs {n} xs = and [x >= (int 0) && x < (int (toIntNat n)) | x <- xs]
 
 
 diags : Vect n (Expr (NumT IntT)) -> Vect n (Expr (NumT IntT)) -> Expr BoolT
-diags [] [] = ?foo_2
-diags (col :: cols) (row :: rows) = let cs = map (\col' => abs col - abs col') cols in
-                                    let rs = map (\row' => abs row - abs row') rows in
-                                    and $ map (\(c, r) => not $ c == r) $ zip cs rs 
+diags [] [] = bool True
+diags (col :: cols) (row :: rows) = let cs = map (\col' => abs $ col - col') cols in
+                                    let rs = map (\row' => abs $ row - row') rows in
+                                    let neqs = map (\(c, r) => not $ c == r) $ zip cs rs in
+                                    and (diags cols rows :: neqs)
   where
     abs : Expr (NumT IntT) -> Expr (NumT IntT)
-    abs x = ite (x > (int 0)) x (x * (int (-1)))
+    abs x = ite (x >= (int 0)) x (x * (int (-1)))
 
 solver : Smt ()
 solver = do cols <- declareVars columns (NumT IntT)
