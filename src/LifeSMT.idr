@@ -3,7 +3,7 @@ module LifeSMT
 import Data.Vect
 import src.SMTLib
 import src.Tensor
-
+import src.GridOps
 
 pattern0 : Vect 6 (Vect 6 Int)
 pattern0 = [[0, 0, 0, 0, 0, 0],
@@ -21,32 +21,8 @@ pattern1 = [[0, 0, 0, 0, 0, 0],
             [0, 0, 1, 0, 0, 0],
             [0, 0, 0, 0, 0, 0]]
 
-
-shiftLeft : a -> Vect n a -> Vect n a
-shiftLeft e [] = []
-shiftLeft {n = S n} e (x :: xs) = replace {P = (\x => Vect x a)} (plusCommutative n 1) (xs ++ [e])
-
-shiftRight : a -> Vect n a -> Vect n a
-shiftRight e xs = reverse $ shiftLeft e $ reverse xs
-
-data Dir = Left | Right | Up | Down
-
-shift : List Dir -> a -> Vect n (Vect m a) -> Vect n (Vect m a)
-shift [] e xss = xss
-shift (Left :: ds) e xss = shift ds e (map (shiftLeft e) xss)
-shift (Right :: ds) e xss = shift ds e (map (shiftRight e) xss)
-shift (Up :: ds) e xss = shift ds e (shiftLeft (replicate _ e) xss)
-shift (Down :: ds) e xss = shift ds e (shiftRight (replicate _ e) xss)
-
-data Pos = First | Last | Middle
-
-toPos : Fin n -> Pos
-toPos {n} fin with (finToNat fin)
- toPos {n} fin | Z = First
- toPos {n} fin | n' = if n == (S n') then Last else Middle
-
 lookup : Fin n -> Fin m -> List Dir ->  Vect n (Vect m (Expr (NumT IntT))) -> Expr (NumT IntT)
-lookup n m ds xss = index n m $ shift ds (int 0) xss
+lookup n m ds xss = GridOps.lookup n m ds (int 0) xss
 
 countNeighborhoods : Fin n -> Fin m -> Vect n (Vect m (Expr (NumT IntT))) -> Expr (NumT IntT)
 countNeighborhoods n m xss with (toPos n, toPos m)
