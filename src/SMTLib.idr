@@ -22,7 +22,7 @@ Show TypeT where
 data Expr : TypeT -> Type where
   VarExpr : String -> (t : TypeT) -> Expr t
   BoolExpr : Bool -> Expr BoolT
-  BvExpr : Integer -> (n : Nat) -> Expr (BitVecT n)
+  BvExpr : Int -> (n : Nat) -> Expr (BitVecT n)
   BvAddExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvSubExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
   BvMulExpr : Expr (BitVecT n) -> Expr (BitVecT n) -> Expr (BitVecT n)
@@ -68,7 +68,7 @@ data Expr : TypeT -> Type where
 bool : Bool -> Expr BoolT
 bool x = BoolExpr x
 
-bv : Integer -> (n : Nat) -> Expr (BitVecT n)
+bv : Int -> (n : Nat) -> Expr (BitVecT n)
 bv x n = BvExpr x n
 
 int : Int -> Expr (NumT IntT)

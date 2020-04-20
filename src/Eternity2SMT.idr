@@ -3,6 +3,7 @@ module Eternity2SMT
 import Data.Vect
 import src.SMTLib
 import src.Tensor
+import src.GridOps
 
 Dim : Nat
 Dim = 4
@@ -70,10 +71,34 @@ mapColorPieces : Vect Dim (Vect Dim (Vect E (Expr (BitVecT ColorBitSize)))) -> V
 mapColorPieces vs = tabulate (\i => tabulate (\j => MkPieceColors (index 0 $ index j $ index i vs) (index 1 $ index j $ index i vs)
                                                                   (index 2 $ index j $ index i vs) (index 3 $ index j $ index i vs)))
 
+equalColors : Piece -> PieceColors ColorBitSize -> Expr BoolT
+equalColors p pc = and [bv (colorInt $ up p) ColorBitSize == upVar pc,
+                        bv (colorInt $ right p) ColorBitSize == rightVar pc,
+                        bv (colorInt $ down p) ColorBitSize == downVar pc,
+                        bv (colorInt $ left p) ColorBitSize == leftVar pc]
+
+validPieces : Vect Dim (Vect Dim (Expr (BitVecT BitSize))) -> Expr BoolT
+validPieces varPieces = and $ concat $ tabulate (\i => tabulate (\j => bvuge (index i j varPieces) (bv 0 BitSize) && bvult (index i j varPieces) (bv (toIntNat $ Dim * Dim) BitSize)))
+
+colorConstraint : Fin Dim -> Fin Dim -> Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
+colorConstraint i j pcs with (toPos i, toPos j)
+  colorConstraint i j pcs | (First, First) = ?fooo1
+  colorConstraint i j pcs | (Last, Last) = ?fooo2
+  colorConstraint i j pcs | (First, Last) = ?fooo3
+  colorConstraint i j pcs | (Last, First) = ?fooo4
+  colorConstraint i j pcs | (First, _) = ?fooo5
+  colorConstraint i j pcs | (Last, _) = ?fooo6
+  colorConstraint i j pcs | (_, First) = ?fooo7
+  colorConstraint i j pcs | (_, Last) = ?fooo8
+  colorConstraint i j pcs | (_, _) = ?fooo9
+
+
 solver : Smt ()
 solver = do varPieces <- declareVars varPieces (BitVecT BitSize)
             varColorPieces <- declareVars varColorPieces (BitVecT ColorBitSize)
+            let varPieces = toVect varPieces
             let varColorPieces = toVect varColorPieces
             let colorPieces = mapColorPieces varColorPieces
+            assert $ validPieces varPieces
             ?foo
             end
