@@ -37,6 +37,31 @@ puzzle = [ ['Y', 'X', 'X', 'B'], ['Y', 'B', 'X', 'X'], ['X', 'B', 'B', 'X'], ['X
            ['Y', 'X', 'Y', 'P'], ['B', 'X', 'B', 'P'], ['Y', 'X', 'B', 'P'], ['B', 'X', 'Y', 'P'],
            ['Y', 'X', 'Y', 'U'], ['B', 'X', 'B', 'U'], ['B', 'X', 'Y', 'U'], ['Y', 'X', 'B', 'U'] ]
 
+data Lookup : Fin n -> Fin m -> Vect n (Vect m a) -> Type where
+ FF : a -> a -> Lookup n m xs
+ LL : a -> a -> Lookup n m xs
+ FL : a -> a -> Lookup n m xs
+ LF : a -> a -> Lookup n m xs
+ FM : a -> a -> a -> Lookup n m xs
+ LM : a -> a -> a -> Lookup n m xs
+ MF : a -> a -> a -> Lookup n m xs
+ ML : a -> a -> a -> Lookup n m xs
+ M : a -> a -> a -> a -> Lookup n m xs
+
+toLookup : (fn : Fin n) -> (fm : Fin m) -> a -> (xs : Vect n (Vect m a)) -> Lookup fn fm xs
+toLookup i j x xs with (toPos i, toPos j)
+ toLookup i j x xs | (First, First) = FF (lookup i j [Left] x xs) (lookup i j [Up] x xs)
+ toLookup i j x xs | (Last, Last) = LL (lookup i j [Down] x xs) (lookup i j [Right] x xs)
+ toLookup i j x xs | (First, Last) = FL (lookup i j [Up] x xs) (lookup i j [Right] x xs)
+ toLookup i j x xs | (Last, First) = LF (lookup i j [Down] x xs) (lookup i j [Left] x xs)
+ toLookup i j x xs | (First, _) = FM (lookup i j [Left] x xs) (lookup i j [Up] x xs) (lookup i j [Right] x xs)
+ toLookup i j x xs | (Last, _) = LM (lookup i j [Down] x xs) (lookup i j [Left] x xs) (lookup i j [Right] x xs)
+ toLookup i j x xs | (_, First) = MF (lookup i j [Down] x xs) (lookup i j [Left] x xs) (lookup i j [Up] x xs)
+ toLookup i j x xs | (_, Last) = ML (lookup i j [Down] x xs) (lookup i j [Up] x xs) (lookup i j [Right] x xs)
+ toLookup i j x xs | (_, _) = M (lookup i j [Down] x xs) (lookup i j [Left] x xs) (lookup i j [Up] x xs) (lookup i j [Right] x xs)
+
+
+
 colorInt : Char -> Int
 colorInt c = cast c - cast 'A'
 
@@ -80,17 +105,20 @@ equalColors p pc = and [bv (colorInt $ up p) ColorBitSize == upVar pc,
 validPieces : Vect Dim (Vect Dim (Expr (BitVecT BitSize))) -> Expr BoolT
 validPieces varPieces = and $ concat $ tabulate (\i => tabulate (\j => bvuge (index i j varPieces) (bv 0 BitSize) && bvult (index i j varPieces) (bv (toIntNat $ Dim * Dim) BitSize)))
 
+dummy : PieceColors ColorBitSize
+dummy = MkPieceColors (bv 0 ColorBitSize) (bv 0 ColorBitSize) (bv 0 ColorBitSize) (bv 0 ColorBitSize)
+
 colorConstraint : Fin Dim -> Fin Dim -> Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
-colorConstraint i j pcs with (toPos i, toPos j)
-  colorConstraint i j pcs | (First, First) = ?fooo1
-  colorConstraint i j pcs | (Last, Last) = ?fooo2
-  colorConstraint i j pcs | (First, Last) = ?fooo3
-  colorConstraint i j pcs | (Last, First) = ?fooo4
-  colorConstraint i j pcs | (First, _) = ?fooo5
-  colorConstraint i j pcs | (Last, _) = ?fooo6
-  colorConstraint i j pcs | (_, First) = ?fooo7
-  colorConstraint i j pcs | (_, Last) = ?fooo8
-  colorConstraint i j pcs | (_, _) = ?fooo9
+colorConstraint i j pcs with (index i j pcs, toLookup i j dummy pcs)
+  colorConstraint i j pcs | (pc, (FF r d)) = ?foooo_1
+  colorConstraint i j pcs | (pc, (LL u l)) = ?foooo_2
+  colorConstraint i j pcs | (pc, (FL d l)) = ?foooo_3
+  colorConstraint i j pcs | (pc, (LF u r)) = ?foooo_4
+  colorConstraint i j pcs | (pc, (FM r d l)) = ?foooo_5
+  colorConstraint i j pcs | (pc, (LM u r l)) = ?foooo_6
+  colorConstraint i j pcs | (pc, (MF u r d)) = ?foooo_7
+  colorConstraint i j pcs | (pc, (ML u d l)) = ?foooo_8
+  colorConstraint i j pcs | (pc, (M u r d l)) = ?foooo_9
 
 
 solver : Smt ()
