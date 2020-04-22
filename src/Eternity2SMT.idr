@@ -1,5 +1,6 @@
 module Eternity2SMT
 
+import Data.String
 import Data.Vect
 import src.SMTLib
 import src.Tensor
@@ -150,11 +151,20 @@ solver = do varPieces <- declareVars varPieces (BitVecT BitSize)
             getModel
             end
 
+solution : Vect Dim (Vect Dim (Vect E String)) -> Model -> Vect Dim (Vect Dim String)
+solution vcps model = tabulate (\i => tabulate (\j => let f = the (Fin E -> String)
+                                                                  (\k => case lookup (index k $ index j $ index i vcps) model of
+                                                                                  Nothing => ""
+                                                                                  Just v => case parseInteger {a = Int} v of
+                                                                                              Nothing => ""
+                                                                                              Just x => cast $ intColor x) in
+                                                      f 0 ++ f 1 ++ f 2 ++ f 3))
+
 runSolver : IO ()
 runSolver = do r <- sat solver
                case r of
                  Nothing => do putStrLn "Error parsing result"
                  Just (Sat, model) =>
-                      putStrLn "sat"
+                      putStrLn $ unlines $ toList $ map (unlines . toList) $ solution (toVect varColorPieces) model
                  Just (UnSat, _) => putStrLn "unsat"
                  Just (Unknown, _) => putStrLn "unknown"
