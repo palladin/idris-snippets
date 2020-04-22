@@ -37,18 +37,18 @@ puzzle = [ ['Y', 'X', 'X', 'B'], ['Y', 'B', 'X', 'X'], ['X', 'B', 'B', 'X'], ['X
            ['Y', 'X', 'Y', 'P'], ['B', 'X', 'B', 'P'], ['Y', 'X', 'B', 'P'], ['B', 'X', 'Y', 'P'],
            ['Y', 'X', 'Y', 'U'], ['B', 'X', 'B', 'U'], ['B', 'X', 'Y', 'U'], ['Y', 'X', 'B', 'U'] ]
 
-data Lookup : Fin n -> Fin m -> Vect n (Vect m a) -> Type where
- FF : a -> a -> Lookup n m xs
- LL : a -> a -> Lookup n m xs
- FL : a -> a -> Lookup n m xs
- LF : a -> a -> Lookup n m xs
- FM : a -> a -> a -> Lookup n m xs
- LM : a -> a -> a -> Lookup n m xs
- MF : a -> a -> a -> Lookup n m xs
- ML : a -> a -> a -> Lookup n m xs
- M : a -> a -> a -> a -> Lookup n m xs
+data Lookup : (a : Type) -> Fin n -> Fin m -> Vect n (Vect m a) -> Type where
+ FF : a -> a -> Lookup a n m xs
+ LL : a -> a -> Lookup a n m xs
+ FL : a -> a -> Lookup a n m xs
+ LF : a -> a -> Lookup a n m xs
+ FM : a -> a -> a -> Lookup a n m xs
+ LM : a -> a -> a -> Lookup a n m xs
+ MF : a -> a -> a -> Lookup a n m xs
+ ML : a -> a -> a -> Lookup a n m xs
+ M : a -> a -> a -> a -> Lookup a n m xs
 
-toLookup : (fn : Fin n) -> (fm : Fin m) -> a -> (xs : Vect n (Vect m a)) -> Lookup fn fm xs
+toLookup : (fn : Fin n) -> (fm : Fin m) -> a -> (xs : Vect n (Vect m a)) -> Lookup a fn fm xs
 toLookup i j x xs with (toPos i, toPos j)
  toLookup i j x xs | (First, First) = FF (lookup i j [Left] x xs) (lookup i j [Up] x xs)
  toLookup i j x xs | (Last, Last) = LL (lookup i j [Down] x xs) (lookup i j [Right] x xs)
@@ -108,18 +108,34 @@ validPieces varPieces = and $ concat $ tabulate (\i => tabulate (\j => bvuge (in
 dummy : PieceColors ColorBitSize
 dummy = MkPieceColors (bv 0 ColorBitSize) (bv 0 ColorBitSize) (bv 0 ColorBitSize) (bv 0 ColorBitSize)
 
+
 colorConstraint : Fin Dim -> Fin Dim -> Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
 colorConstraint i j pcs with (index i j pcs, toLookup i j dummy pcs)
-  colorConstraint i j pcs | (pc, (FF r d)) = ?foooo_1
-  colorConstraint i j pcs | (pc, (LL u l)) = ?foooo_2
-  colorConstraint i j pcs | (pc, (FL d l)) = ?foooo_3
-  colorConstraint i j pcs | (pc, (LF u r)) = ?foooo_4
-  colorConstraint i j pcs | (pc, (FM r d l)) = ?foooo_5
-  colorConstraint i j pcs | (pc, (LM u r l)) = ?foooo_6
-  colorConstraint i j pcs | (pc, (MF u r d)) = ?foooo_7
-  colorConstraint i j pcs | (pc, (ML u d l)) = ?foooo_8
-  colorConstraint i j pcs | (pc, (M u r d l)) = ?foooo_9
+  colorConstraint i j pcs | (pc, (FF r d)) = and [upVar pc == bv (colorInt 'X') ColorBitSize,
+                                                  leftVar pc == bv (colorInt 'X') ColorBitSize,
+                                                  rightVar pc == leftVar r, downVar pc == upVar d]
+  colorConstraint i j pcs | (pc, (LL u l)) = and [downVar pc == bv (colorInt 'X') ColorBitSize,
+                                                  rightVar pc == bv (colorInt 'X') ColorBitSize,
+                                                  upVar pc == downVar u, leftVar pc == rightVar l]
+  colorConstraint i j pcs | (pc, (FL d l)) = and [upVar pc == bv (colorInt 'X') ColorBitSize,
+                                                  rightVar pc == bv (colorInt 'X') ColorBitSize,
+                                                  downVar pc == upVar d, leftVar pc == rightVar l]
+  colorConstraint i j pcs | (pc, (LF u r)) = and [downVar pc == bv (colorInt 'X') ColorBitSize,
+                                                  leftVar pc == bv (colorInt 'X') ColorBitSize,
+                                                  upVar pc == downVar u, rightVar pc == leftVar r]
+  colorConstraint i j pcs | (pc, (FM r d l)) = and [upVar pc == bv (colorInt 'X') ColorBitSize,
+                                                    downVar pc == upVar d, leftVar pc == rightVar l, rightVar pc == leftVar r]
+  colorConstraint i j pcs | (pc, (LM u r l)) = and [downVar pc == bv (colorInt 'X') ColorBitSize,
+                                                    upVar pc == downVar u, leftVar pc == rightVar l, rightVar pc == leftVar r]
+  colorConstraint i j pcs | (pc, (MF u r d)) = and [leftVar pc == bv (colorInt 'X') ColorBitSize,
+                                                    upVar pc == downVar u, downVar pc == upVar d, rightVar pc == leftVar r]
+  colorConstraint i j pcs | (pc, (ML u d l)) = and [rightVar pc == bv (colorInt 'X') ColorBitSize,
+                                                    upVar pc == downVar u, downVar pc == upVar d, leftVar pc == rightVar l]
+  colorConstraint i j pcs | (pc, (M u r d l)) = and [upVar pc == downVar u, downVar pc == upVar d,
+                                                     leftVar pc == rightVar l, rightVar pc == leftVar r]
 
+colorConstraints : Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
+colorConstraints pcs = and $ concat $ tabulate (\i => tabulate (\j => colorConstraint i j pcs))
 
 solver : Smt ()
 solver = do varPieces <- declareVars varPieces (BitVecT BitSize)
@@ -128,5 +144,17 @@ solver = do varPieces <- declareVars varPieces (BitVecT BitSize)
             let varColorPieces = toVect varColorPieces
             let colorPieces = mapColorPieces varColorPieces
             assert $ validPieces varPieces
-            ?foo
+            assert $ distinct $ concat varPieces
+            assert $ colorConstraints colorPieces
+            checkSat
+            getModel
             end
+
+runSolver : IO ()
+runSolver = do r <- sat solver
+               case r of
+                 Nothing => do putStrLn "Error parsing result"
+                 Just (Sat, model) =>
+                      putStrLn "sat"
+                 Just (UnSat, _) => putStrLn "unsat"
+                 Just (Unknown, _) => putStrLn "unknown"
