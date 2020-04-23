@@ -139,7 +139,10 @@ colorConstraints : Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
 colorConstraints pcs = and $ concat $ tabulate (\i => tabulate (\j => colorConstraint i j pcs))
 
 solver : Smt ()
-solver = do varPieces <- declareVars varPieces (BitVecT BitSize)
+solver = do setLogic "QF_BV"
+            setOption ":pp.bv-literals false"
+            setOption ":model_validate true"
+            varPieces <- declareVars varPieces (BitVecT BitSize)
             varColorPieces <- declareVars varColorPieces (BitVecT ColorBitSize)
             let varPieces = toVect varPieces
             let varColorPieces = toVect varColorPieces
@@ -165,6 +168,6 @@ runSolver = do r <- sat solver
                case r of
                  Nothing => do putStrLn "Error parsing result"
                  Just (Sat, model) =>
-                      putStrLn $ unlines $ toList $ map (unlines . toList) $ solution (toVect varColorPieces) model
+                         putStrLn $ unlines $ toList $ map (unwords . toList) $ solution (toVect varColorPieces) model
                  Just (UnSat, _) => putStrLn "unsat"
                  Just (Unknown, _) => putStrLn "unknown"
