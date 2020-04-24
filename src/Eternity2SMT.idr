@@ -139,7 +139,7 @@ colorConstraints : Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
 colorConstraints pcs = and $ concat $ tabulate (\i => tabulate (\j => colorConstraint i j pcs))
 
 pieceConstraint : Vect (Dim * Dim) (Int, Vect E Piece) -> Expr (BitVecT BitSize) -> PieceColors ColorBitSize -> Expr BoolT
-pieceConstraint ps vp pc = or $ map (\(i, ps) => let ors = or $ map (\p => equalColors p pc) ps in 
+pieceConstraint ps vp pc = or $ map (\(i, ps) => let ors = or $ map (\p => equalColors p pc) ps in
                                                  bv i BitSize == vp && ors) ps
 
 pieceConstraints : Vect (Dim * Dim) (Int, Vect E Piece) -> Vect Dim (Vect Dim (Expr (BitVecT BitSize))) -> Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
@@ -162,20 +162,26 @@ solver = do setLogic "QF_BV"
             getModel
             end
 
-solution : Vect Dim (Vect Dim (Vect E String)) -> Model -> Vect Dim (Vect Dim String)
-solution vcps model = tabulate (\i => tabulate (\j => let f = the (Fin E -> String)
-                                                                  (\k => case lookup (index k $ index j $ index i vcps) model of
-                                                                                  Nothing => ""
-                                                                                  Just v => case parseInteger {a = Int} v of
-                                                                                              Nothing => ""
-                                                                                              Just x => cast $ intColor x) in
-                                                      f 0 ++ f 1 ++ f 2 ++ f 3))
+pieceColorSolution : Vect Dim (Vect Dim (Vect E String)) -> Model -> Vect Dim (Vect Dim String)
+pieceColorSolution vcps model = tabulate (\i => tabulate (\j => let f = the (Fin E -> String)
+                                                                        (\k => case lookup (index k $ index j $ index i vcps) model of
+                                                                                    Nothing => ""
+                                                                                    Just v => case parseInteger {a = Int} v of
+                                                                                                Nothing => ""
+                                                                                                Just x => cast $ intColor x) in
+                                                                f 0 ++ f 1 ++ f 2 ++ f 3))
+
+pieceSolution : Vect Dim (Vect Dim String) -> Model -> Vect Dim (Vect Dim String)
+pieceSolution vps model =  tabulate (\i => tabulate (\j => case lookup (index i j vps) model of
+                                                                Nothing => ""
+                                                                Just v => v))
 
 runSolver : IO ()
 runSolver = do r <- sat solver
                case r of
                  Nothing => do putStrLn "Error parsing result"
                  Just (Sat, model) =>
-                         putStrLn $ unlines $ toList $ map (unwords . toList) $ solution (toVect varColorPieces) model
+                        do putStrLn $ unlines $ toList $ map (unwords . toList) $ pieceSolution (toVect varPieces) model
+                           putStrLn $ unlines $ toList $ map (unwords . toList) $ pieceColorSolution (toVect varColorPieces) model
                  Just (UnSat, _) => putStrLn "unsat"
                  Just (Unknown, _) => putStrLn "unknown"
