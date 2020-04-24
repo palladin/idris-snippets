@@ -138,6 +138,13 @@ colorConstraint i j pcs with (index i j pcs, toLookup i j dummy pcs)
 colorConstraints : Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
 colorConstraints pcs = and $ concat $ tabulate (\i => tabulate (\j => colorConstraint i j pcs))
 
+pieceConstraint : Vect (Dim * Dim) (Int, Vect E Piece) -> Expr (BitVecT BitSize) -> PieceColors ColorBitSize -> Expr BoolT
+pieceConstraint ps vp pc = or $ map (\(i, ps) => let ors = or $ map (\p => equalColors p pc) ps in 
+                                                 bv i BitSize == vp && ors) ps
+
+pieceConstraints : Vect (Dim * Dim) (Int, Vect E Piece) -> Vect Dim (Vect Dim (Expr (BitVecT BitSize))) -> Vect Dim (Vect Dim (PieceColors ColorBitSize)) -> Expr BoolT
+pieceConstraints ps vps pcs = and $ concat $ tabulate (\i => tabulate (\j => pieceConstraint ps (index i j vps) (index i j pcs)))
+
 solver : Smt ()
 solver = do setLogic "QF_BV"
             setOption ":pp.bv-literals false"
@@ -150,6 +157,7 @@ solver = do setLogic "QF_BV"
             assert $ validPieces varPieces
             assert $ distinct $ concat varPieces
             assert $ colorConstraints colorPieces
+            assert $ pieceConstraints pieces varPieces colorPieces
             checkSat
             getModel
             end
