@@ -1,5 +1,5 @@
 module StreamFusion
-
+import Control.Pipeline
 
 data TypeT : Type where
   UnitT : TypeT
@@ -167,37 +167,37 @@ zipWith f (SC inita nexta currenta reseta) (SC initb nextb currentb resetb) =
     reset reseta resetb (s, s', (_ ** b), (_ ** b'), _, _) = seqs [assign (bool True) b, assign (bool False) b', reseta s, resetb s']
 
 example0 : Symantics rep => rep (ArrayT IntT) -> rep IntT
-example0 = sum . map (\x => x * (int 2)) . filter (\x => x < (int 3)) . ofArray
+example0 arr = arr |> ofArray |> filter (\x => x < (int 3)) |> map (\x => x * (int 2)) |> sum
 
 example1 : Symantics rep => rep (ArrayT IntT) -> rep IntT
-example1 arr = (sum . flatMap (\x => nested1 arr x) . ofArray) arr
+example1 arr = arr |> ofArray |> flatMap (\x => nested1 arr x) |> sum
   where
     nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
-    nested2 arr x = (map (\x' => x * x') . ofArray) arr
+    nested2 arr x = arr |> ofArray |> map (\x' => x * x')
     nested1 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
-    nested1 arr x = (flatMap (\x => nested2 arr x) . ofArray) arr
+    nested1 arr x = arr |> ofArray |> flatMap (\x => nested2 arr x)
 
 example2 : Symantics rep => rep (ArrayT IntT) -> rep IntT
 example2 arr = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr)
 where
   nested1 : rep (ArrayT IntT) -> Stream rep IntT
-  nested1 arr = (map (\x => x * (int 2)) . ofArray) arr
+  nested1 arr = arr |> ofArray |> map (\x => x * (int 2))
 
 example3 : Symantics rep => rep (ArrayT IntT) -> rep (ArrayT IntT) -> rep IntT
 example3 arr arr' = sum $ zipWith (\x, y => x * y) (nested1 arr) (nested1 arr')
   where
     nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
-    nested2 arr x = (filter (\x' => x == x') . ofArray) arr
+    nested2 arr x = arr |> ofArray |> filter (\x' => x == x')
     nested1 : rep (ArrayT IntT) -> Stream rep IntT
-    nested1 arr = (flatMap (\x => nested2 arr x) . ofArray) arr
+    nested1 arr = arr |> ofArray |> flatMap (\x => nested2 arr x)
 
 example4 : Symantics rep => rep (ArrayT IntT) -> rep IntT
-example4 arr = sum $ map (\x => x * (int 2)) (nested1 arr)
+example4 arr = arr |> nested1 |> map (\x => x * (int 2)) |> sum
 where
   nested2 : rep (ArrayT IntT) -> rep IntT -> Stream rep IntT
-  nested2 arr x = (map (\x' => x * x') . ofArray) arr
+  nested2 arr x = arr |> ofArray |> map (\x' => x * x')
   nested1 : rep (ArrayT IntT) -> Stream rep IntT
-  nested1 arr = (flatMap (\x => nested2 arr x) . flatMap (\x => nested2 arr x) . ofArray) arr
+  nested1 arr = arr |> ofArray |> flatMap (\x => nested2 arr x) |> flatMap (\x => nested2 arr x)
 
 test0 : Code (ArrowT (ArrayT IntT) IntT)
 test0 = lam example0
