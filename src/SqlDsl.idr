@@ -1,7 +1,8 @@
 module SqlDsl
 
-import Control.Pipeline
 import Data.Vect
+
+%access public export
 
 data SqlType : Type where
   SqlInt : SqlType
@@ -16,6 +17,7 @@ data SqlExpr : SqlType -> Type where
   ConcatC : SqlExpr SqlString -> SqlExpr SqlString -> SqlExpr SqlString
   EqualC : SqlExpr a -> SqlExpr a -> SqlExpr SqlBool
   NotC : SqlExpr SqlBool -> SqlExpr SqlBool
+  Field : {t : SqlType} -> String -> SqlExpr t
 
 
 int : Int -> SqlExpr SqlInt
@@ -59,6 +61,26 @@ where' pred query = Where query pred
 select : (Tuple (\t => SqlExpr (snd t)) ts -> Tuple (\t => SqlExpr (snd t)) ts') -> SqlQuery ts -> SqlQuery ts'
 select f query = Select query f
 
+compileExpr : SqlExpr t -> String
+compileExpr (IntC x) = show x
+compileExpr (BoolC x) = show x
+compileExpr (StringC x) = x
+compileExpr (PlusC x y) = "(" ++ compileExpr x ++ " + " ++ compileExpr y ++ ")"
+compileExpr (ConcatC x y) = "(" ++ compileExpr x ++ " ++ " ++ compileExpr y ++ ")"
+compileExpr (EqualC x y) = "(" ++ compileExpr x ++ " = " ++ compileExpr y ++ ")"
+compileExpr (NotC x) = "Not" ++ compileExpr x
+compileExpr (Field x) = x
+
+compile : {ts : Vect n (String, SqlType)} -> SqlQuery ts -> (Tuple (\t => SqlExpr (snd t)) ts -> String -> String) -> String
+compile (From (tableName, ts)) k = let sql = "select * from " ++ tableName in k (mapToTuple ts) sql
+  where
+    mapToTuple : (ts : Vect n (String, SqlType)) -> Tuple (\t => SqlExpr (snd t)) ts
+    mapToTuple [] = []
+    mapToTuple ((name, t) :: ts) = Field {t = t} name :: mapToTuple ts
+compile (Where query pred) k = ?foo1ooo
+compile (Select query f) k = ?fooo2oooo
+
+
 
 customer : Table {n = 3}
 customer = ("Customer", [("Id", SqlInt),
@@ -66,8 +88,8 @@ customer = ("Customer", [("Id", SqlInt),
                          ("Age", SqlInt)])
 
 --
-example : SqlQuery [("Id", SqlInt), ("Name", SqlString), ("Age", SqlInt)]
-example = from customer
+example0 : SqlQuery [("Id", SqlInt), ("Name", SqlString), ("Age", SqlInt)]
+example0 = from customer
 
 example1 : SqlQuery [("Name", SqlString)]
 example1 = select (\ta => [get {t = ("Name", SqlString)} {ts = snd customer} ta]) $ from customer
