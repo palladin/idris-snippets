@@ -2,7 +2,7 @@ module SqlDsl
 
 import Data.Vect
 
-%access public export
+--%access public export
 
 data SqlType : Type where
   SqlInt : SqlType
@@ -17,7 +17,7 @@ data SqlExpr : SqlType -> Type where
   ConcatC : SqlExpr SqlString -> SqlExpr SqlString -> SqlExpr SqlString
   EqualC : SqlExpr a -> SqlExpr a -> SqlExpr SqlBool
   NotC : SqlExpr SqlBool -> SqlExpr SqlBool
-  Field : {t : SqlType} -> String -> SqlExpr t
+  Field : {t : SqlType} -> (alias : String) -> (name : String) -> SqlExpr t
 
 
 int : Int -> SqlExpr SqlInt
@@ -64,32 +64,38 @@ select f query = Select query f
 compileExpr : SqlExpr t -> String
 compileExpr (IntC x) = show x
 compileExpr (BoolC x) = show x
-compileExpr (StringC x) = x
+compileExpr (StringC x) = "\"" ++ x ++ "\""
 compileExpr (PlusC x y) = "(" ++ compileExpr x ++ " + " ++ compileExpr y ++ ")"
 compileExpr (ConcatC x y) = "(" ++ compileExpr x ++ " ++ " ++ compileExpr y ++ ")"
 compileExpr (EqualC x y) = "(" ++ compileExpr x ++ " = " ++ compileExpr y ++ ")"
 compileExpr (NotC x) = "NOT" ++ compileExpr x
-compileExpr (Field x) = x
+compileExpr (Field alias name) = alias ++ "." ++ name
 
-mapToTuple : (ts : Vect n (String, SqlType)) -> Tuple (\t => SqlExpr (snd t)) ts
-mapToTuple [] = []
-mapToTuple ((name, t) :: ts) = Field {t = t} name :: mapToTuple ts
+mapToTuple : String -> (ts : Vect n (String, SqlType)) -> Tuple (\t => SqlExpr (snd t)) ts
+mapToTuple alias [] = []
+mapToTuple alias ((name, t) :: ts) = Field {t = t} alias name :: mapToTuple alias ts
 
-tupleToString : Tuple (\t => SqlExpr (snd t)) ts -> String
-tupleToString [] = ""
-tupleToString [t] = compileExpr t
-tupleToString (t :: ts) = compileExpr t ++ ", " ++ tupleToString ts
+tupleToString : {ts : Vect n (String, SqlType)} -> Tuple (\t => SqlExpr (snd t)) ts -> String
+tupleToString {ts = []} [] = ""
+tupleToString {ts = [t]} [e] = compileExpr e ++ " AS " ++ fst t
+tupleToString {ts = t :: ts} (e :: es) = compileExpr e ++ " AS " ++ fst t ++ ", " ++ tupleToString es
 
-compile : {ts : Vect n (String, SqlType)} -> SqlQuery ts -> (Tuple (\t => SqlExpr (snd t)) ts -> String -> String) -> String
-compile (From (tableName, ts)) k = let sql = "SELECT * FROM " ++ tableName in k (mapToTuple ts) sql
-compile (Where query pred) k = compile query (\tuple, sql =>
-                                                let sql' = "SELECT * FROM (" ++ sql ++ ") WHERE " ++ (compileExpr $ pred tuple) in
-                                                k tuple sql')
-compile (Select query f) k = compile query (\tuple, sql =>
-                                                let tuple' = f tuple in
-                                                let sql' = "SELECT " ++ tupleToString tuple'  ++ " FROM (" ++ sql ++ ")" in
-                                                k tuple' sql')
+compile' : {ts : Vect n (String, SqlType)} -> SqlQuery ts -> Int -> (Int -> String -> String) -> String
+compile' (From (tableName, ts)) i k = let alias = "c" ++ show i in
+                                      let sql = "SELECT * FROM " ++ tableName ++ " AS " ++ alias in
+                                      k (i + 1) sql
+compile' {ts} (Where query pred) i k = compile' query i (\i, sql =>
+                                                        let alias = "c" ++ show i in
+                                                        let sql' = "SELECT * FROM (" ++ sql ++ ") AS " ++ alias ++ " WHERE " ++ (compileExpr $ pred $ mapToTuple alias ts) in
+                                                        k (i + 1) sql')
+compile' (Select {ts} query f) i k = compile' query i (\i, sql =>
+                                                      let alias = "c" ++ show i in
+                                                      let tuple' = f $ mapToTuple alias ts in
+                                                      let sql' = "SELECT " ++ tupleToString tuple' ++ " FROM (" ++ sql ++ ") AS " ++ alias in
+                                                      k (i + 1) sql')
 
+compile : SqlQuery ts -> String
+compile query = compile' query 0 (\_, sql => sql)
 
 
 customer : Table {n = 3}
