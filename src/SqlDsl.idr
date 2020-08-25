@@ -43,17 +43,21 @@ index : (i : Fin k) -> Tuple f ts -> f (index i ts)
 index FZ (x::xs) = x
 index (FS j) (x::xs) = index j xs
 
-get : {t : (String, SqlType)} -> {ts : Vect n (String, SqlType)} -> Tuple (\t => SqlExpr (snd t)) ts -> {auto p : Elem t ts} -> SqlExpr (snd t)
-get (x :: xs) {p = Here} = x
-get (x :: xs) {p = There p'} = get {p = p'} xs
+get : (t : (String, SqlType)) -> {ts : Vect n (String, SqlType)} -> Tuple (\t => SqlExpr (snd t)) ts -> {auto p : Elem t ts} -> SqlExpr (snd t)
+get t (x :: xs) {p = Here} = x
+get t (x :: xs) {p = There p'} = get t {p = p'} xs
 
 data SqlQuery : Vect n (String, SqlType) -> Type where
   From : (t : Table) -> SqlQuery (snd t)
+  Product : SqlQuery ts -> SqlQuery ts' -> (Tuple (\t => SqlExpr (snd t)) ts -> Tuple (\t => SqlExpr (snd t)) ts' -> Tuple (\t => SqlExpr (snd t)) ts'') -> SqlQuery ts''
   Where : SqlQuery ts -> (Tuple (\t => SqlExpr (snd t)) ts -> SqlExpr SqlBool) -> SqlQuery ts
   Select : SqlQuery ts -> (Tuple (\t => SqlExpr (snd t)) ts -> Tuple (\t => SqlExpr (snd t)) ts') -> SqlQuery ts'
 
 from : (t : Table) -> SqlQuery (snd t)
 from t = From t
+
+product : (Tuple (\t => SqlExpr (snd t)) ts -> Tuple (\t => SqlExpr (snd t)) ts' -> Tuple (\t => SqlExpr (snd t)) ts'') -> SqlQuery ts -> SqlQuery ts' -> SqlQuery ts''
+product proj q1 q2 = Product q1 q2 proj
 
 where' : (Tuple (\t => SqlExpr (snd t)) ts -> SqlExpr SqlBool) -> SqlQuery ts -> SqlQuery ts
 where' pred query = Where query pred
@@ -81,18 +85,31 @@ tupleToString {ts = [t]} [e] = compileExpr e ++ " AS " ++ fst t
 tupleToString {ts = t :: ts} (e :: es) = compileExpr e ++ " AS " ++ fst t ++ ", " ++ tupleToString es
 
 compile' : {ts : Vect n (String, SqlType)} -> SqlQuery ts -> Int -> (Int -> String -> String) -> String
-compile' (From (tableName, ts)) i k = let alias = "c" ++ show i in
-                                      let sql = "SELECT * FROM " ++ tableName ++ " AS " ++ alias in
-                                      k (i + 1) sql
-compile' {ts} (Where query pred) i k = compile' query i (\i, sql =>
-                                                        let alias = "c" ++ show i in
-                                                        let sql' = "SELECT * FROM (" ++ sql ++ ") AS " ++ alias ++ " WHERE " ++ (compileExpr $ pred $ mapToTuple alias ts) in
-                                                        k (i + 1) sql')
-compile' (Select {ts} query f) i k = compile' query i (\i, sql =>
-                                                      let alias = "c" ++ show i in
-                                                      let tuple' = f $ mapToTuple alias ts in
-                                                      let sql' = "SELECT " ++ tupleToString tuple' ++ " FROM (" ++ sql ++ ") AS " ++ alias in
-                                                      k (i + 1) sql')
+compile' (Select {ts} (From (tableName, _)) f) i k =
+  let alias = "c" ++ show i in
+  let tuple' = f $ mapToTuple alias ts in
+  let sql = "SELECT " ++ tupleToString tuple' ++ " FROM " ++ tableName ++ " AS " ++ alias in
+  k (i + 1) sql
+compile' (Select {ts} (Where (From (tableName, _)) pred) f) i k =
+  let alias = "c" ++ show i in
+  let tuple' = f $ mapToTuple alias ts in
+  let sql = "SELECT " ++ tupleToString tuple' ++ " FROM " ++ tableName ++ " AS " ++ alias ++ " WHERE " ++ (compileExpr $ pred $ mapToTuple alias ts) in
+  k (i + 1) sql
+compile' (From (tableName, ts)) i k =
+  let alias = "c" ++ show i in
+  let sql = "SELECT * FROM " ++ tableName ++ " AS " ++ alias in
+  k (i + 1) sql
+compile' {ts} (Where query pred) i k =
+  compile' query i (\i, sql =>
+    let alias = "c" ++ show i in
+    let sql' = "SELECT * FROM (" ++ sql ++ ") AS " ++ alias ++ " WHERE " ++ (compileExpr $ pred $ mapToTuple alias ts) in
+    k (i + 1) sql')
+compile' (Select {ts} query f) i k =
+  compile' query i (\i, sql =>
+    let alias = "c" ++ show i in
+    let tuple' = f $ mapToTuple alias ts in
+    let sql' = "SELECT " ++ tupleToString tuple' ++ " FROM (" ++ sql ++ ") AS " ++ alias in
+    k (i + 1) sql')
 
 compile : SqlQuery ts -> String
 compile query = compile' query 0 (\_, sql => sql)
@@ -108,7 +125,7 @@ example0 : SqlQuery [("Id", SqlInt), ("Name", SqlString), ("Age", SqlInt)]
 example0 = from customer
 
 example1 : SqlQuery [("Name", SqlString)]
-example1 = select (\ta => [get {t = ("Name", SqlString)} {ts = snd customer} ta]) $ from customer
+example1 = select (\ta  => [get ("Name", SqlString) {ts = snd customer} ta]) $ from customer
 
 example2 : SqlQuery [("Id", SqlInt)]
 example2 = select (\ta => [index 0 ta]) $ from customer
