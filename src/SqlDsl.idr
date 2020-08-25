@@ -110,6 +110,15 @@ compile' (Select {ts} query f) i k =
     let tuple' = f $ mapToTuple alias ts in
     let sql' = "SELECT " ++ tupleToString tuple' ++ " FROM (" ++ sql ++ ") AS " ++ alias in
     k (i + 1) sql')
+compile' (Product {ts} {ts'} q1 q2 f) i k =
+  compile' q1 i (\i, sql =>
+    compile' q2 i (\i, sql' =>
+      let alias = "c" ++ show i in
+      let i' = i + 1 in
+      let alias' = "c" ++ show i' in
+      let tuple' = f (mapToTuple alias ts) (mapToTuple alias' ts') in
+      let sql'' = "SELECT " ++ tupleToString tuple' ++ " FROM (" ++ sql ++ ") AS " ++ alias ++ ", (" ++ sql' ++ ") AS " ++ alias' in
+      k (i' + 1) sql''))
 
 compile : SqlQuery ts -> String
 compile query = compile' query 0 (\_, sql => sql)
