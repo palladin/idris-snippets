@@ -1,5 +1,7 @@
 module Regex
 
+-- Based on https://homepage.divms.uiowa.edu/~astump/papers/stump-icfp20.pdf
+
 data ListF : Type -> Type -> Type where
   Nil : ListF a f
   Cons : a -> f -> ListF a f
@@ -52,18 +54,6 @@ matchi {t} match reg = mcatapn {x = MatchiX t} alg reg
         alg eval _ (Or r1 r2) c cs k = eval r1 c cs k || eval r2 c cs k
         alg eval reveal (Plus r) c cs k = eval r c cs (\cs => k cs || match cs (In (Plus $ reveal r)) k)
         alg eval reveal (Concat r1 r2) c cs k = eval r1 c cs (\cs => match cs (reveal r2) k)
-  --where
-
--- matchi match NoMatch c cs k = False
--- matchi match (MatchChar c') c cs k = if c == c' then k cs else False
--- matchi match (Or r1 r2) c cs k = matchi match r1 c cs k || matchi match r2 c cs k
--- matchi match (Plus r) c cs k = matchi match r c cs (\cs => k cs || match cs (Plus r) k)
--- matchi match (Concat r1 r2) c cs k = matchi match r1 c cs (\cs => match cs r2 k)
---
--- matchh : List Char -> StdReg -> MatchT
--- matchh [] r k = False
--- matchh (c :: cs) r k = matchi matchh r c cs k
---
 
 
 match : List' Char -> StdReg -> Bool
