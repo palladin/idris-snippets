@@ -29,8 +29,26 @@ isNil (In (Cons x xs)) = True
 (::) : a -> List' a -> List' a
 (::) x xs = In (Cons x xs)
 
+str : String -> List' Char
+str xs = str' $ unpack xs
+  where str' : List Char -> List' Char
+        str' [] = In $ Nil
+        str' (x :: xs) = In $ Cons x (str' xs)
+
 StdReg : Type
 StdReg = Mu StdRegF
+
+char : Char -> StdReg
+char c = In $ MatchChar c
+
+concat : StdReg -> StdReg -> StdReg
+concat r1 r2 = In $ Concat r1 r2
+
+or : StdReg -> StdReg -> StdReg
+or r1 r2 = In $ Or r1 r2
+
+plus : StdReg -> StdReg
+plus r = In $ Plus r
 
 McatapnAlg : (f : Type -> Type) -> (x : Type -> Type) -> Type
 McatapnAlg f x = {r : Type} -> (r -> x r) -> (r -> Mu f) -> f r -> x r
@@ -57,9 +75,27 @@ matchi {t} match reg = mcatapn {x = MatchiX t} alg reg
 
 
 match : List' Char -> StdReg -> Bool
-match xs reg = mcatapn alg xs reg isNil
+match xs reg = mcatapn alg xs reg (\_ => True)
   where MatchX : Type -> Type
         MatchX r = StdReg -> MatchT r
         alg : McatapnAlg (ListF Char) MatchX
         alg eval _ Nil r k = False
         alg eval _ (Cons c cs) r k = matchi eval r c cs k
+
+example : StdReg
+example = concat (concat (char 'c') (plus $ or (char 'a') (char 'd'))) (char 'r')
+
+test0 : Bool
+test0 = match (str "car") example
+
+test1 : Bool
+test1 = match (str "cdr") example
+
+test2 : Bool
+test2 = match (str "cr") example
+
+test3 : Bool
+test3 = match (str "cddar") example
+
+test4 : Bool
+test4 = match (str "cdda") example
