@@ -13,6 +13,7 @@ Pierce = (P, Q : Type) -> ((P -> Q) -> P) -> P
 
 -- ex falso quod libet
 efq : (P : Type) -> Void -> P
+efq P v = ?fsfsf
 
 
 tndToRaa : TND -> RAA
