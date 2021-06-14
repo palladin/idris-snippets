@@ -10,14 +10,14 @@ data ITree : (e : Type -> Type) -> (r : Type) -> Type where
 
 implementation Functor (ITree e) where
   map f (Ret x) = Ret $ f x
-  map f (Tau tr) = map f tr
+  map f (Tau tr) = Tau $ map f tr
   map f (Vis e k) = Vis e (\x => map f (k x))
 
 implementation Applicative (ITree e) where
   pure a = Ret a
 
   (Ret f) <*> tra = map f tra
-  (Tau trf) <*> tra = trf <*> tra
+  (Tau trf) <*> tra = Tau $ trf <*> tra
   (Vis e k) <*> tra = Vis e (\x => k x <*> tra)
 
 implementation Monad (ITree e) where
@@ -26,6 +26,9 @@ implementation Monad (ITree e) where
   (Vis e f') >>= f = Vis e (\x => f' x >>= f)
 
 interp : Monad m => ({r : Type} -> e r -> m r) -> {r : Type} -> ITree e r -> m r
+interp h (Ret r) = pure r
+interp h (Tau tr) = interp h tr
+interp h (Vis e k) = h e >>= (\x => interp h (k x))
 
 data IO' : Type -> Type where
   Input : IO' Nat
