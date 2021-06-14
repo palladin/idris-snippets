@@ -36,10 +36,14 @@ implementation MonadIter (ITree e) where
                     Right b => Ret b
                 }
 
-interp : Monad m => ({r : Type} -> e r -> m r) -> {r : Type} -> ITree e r -> m r
-interp h (Ret r) = pure r
-interp h (Tau tr) = interp h tr
-interp h (Vis e k) = h e >>= (\x => interp h (k x))
+implementation MonadIter (StateT s (ITree e)) where
+  iter body a = ST $ \s => let (ST f) = body a in ?sdfsf
+
+interp : MonadIter m => ({r : Type} -> e r -> m r) -> {r : Type} -> ITree e r -> m r
+interp h = iter (\tr => case tr of
+                          Ret r => pure $ Right r
+                          Tau tr => pure $ Left tr
+                          Vis e k => h e >>= (\x => pure $ Left (k x)))
 
 data IO' : Type -> Type where
   Input : IO' Nat
