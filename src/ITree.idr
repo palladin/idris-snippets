@@ -25,6 +25,17 @@ implementation Monad (ITree e) where
   (Tau tr) >>= f = Tau $ tr >>= f
   (Vis e f') >>= f = Vis e (\x => f' x >>= f)
 
+interface Monad m => MonadIter (m : Type -> Type) where
+  iter : (a -> m (Either a b)) -> a -> m b
+
+implementation MonadIter (ITree e) where
+  iter body a = do {
+                  ab <- body a;
+                  case ab of
+                    Left a => Tau $ iter body a
+                    Right b => Ret b
+                }
+
 interp : Monad m => ({r : Type} -> e r -> m r) -> {r : Type} -> ITree e r -> m r
 interp h (Ret r) = pure r
 interp h (Tau tr) = interp h tr
