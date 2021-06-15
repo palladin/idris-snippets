@@ -36,8 +36,8 @@ implementation MonadIter (ITree e) where
                     Right b => Ret b
                 }
 
-implementation MonadIter (StateT s (ITree e)) where
-  iter body a = ST $ \s => let (ST f) = body a in ?sdfsf
+implementation MonadIter m => MonadIter (StateT s m) where
+  iter body a = ST $ \s => ?fsdfsd
 
 interp : MonadIter m => ({r : Type} -> e r -> m r) -> {r : Type} -> ITree e r -> m r
 interp h = iter (\tr => case tr of
@@ -65,5 +65,5 @@ handlerState : StateE s r -> StateT s (ITree e) r
 handlerState Get = ST $ \s => Ret (s, s)
 handlerState (Put s') = ST $ \s => Ret ((), s')
 
-interpState : ITree (StateE s) r -> StateT s (ITree e) r
-interpState = interp handlerState
+interpState : MonadIter m => ({r : Type} -> e r -> StateT s m r) -> ITree e r -> StateT s m r
+interpState h = interp h
