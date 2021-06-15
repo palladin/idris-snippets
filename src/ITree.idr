@@ -37,7 +37,13 @@ implementation MonadIter (ITree e) where
                 }
 
 implementation MonadIter m => MonadIter (StateT s m) where
-  iter body a = ST $ \s => ?fsdfsd
+  iter body a = ST $ \s => iter (\(a, s) =>
+    do {
+      (ab, s) <- runStateT (body a) s
+      pure $ case ab of
+              Left a => Left (a, s)
+              Right b => Right (b, s)
+    }) (a, s)
 
 interp : MonadIter m => ({r : Type} -> e r -> m r) -> {r : Type} -> ITree e r -> m r
 interp h = iter (\tr => case tr of
