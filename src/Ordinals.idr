@@ -10,9 +10,27 @@ data Ord : Type where
 (+) (Suc n) m = Suc $ n + m
 (+) (Lim f) m = Lim (\x => f x + m)
 
+(*) : Ord -> Ord -> Ord
+(*) Zero m = Zero
+(*) (Suc n) m = n + m
+(*) (Lim f) m = Lim (\x => f x * m)
+
+exp : Ord -> Ord -> Ord
+exp Zero m = Suc Zero
+exp (Suc n) m = n * m
+exp (Lim f) m = Lim (\x => exp (f x) m)
+
+
 omega : Ord
-omega = Lim fromNat
+omega = Lim rec
   where
-    fromNat : Nat -> Ord
-    fromNat Z = Zero
-    fromNat (S n) = Suc $ fromNat n
+    rec : Nat -> Ord
+    rec Z = Zero
+    rec (S n) = Suc $ rec n
+
+epsilonNought : Ord
+epsilonNought = Lim rec
+  where
+    rec : Nat -> Ord
+    rec Z = omega
+    rec (S n) = exp omega (rec n)
