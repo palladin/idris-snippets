@@ -40,11 +40,31 @@ reify f = f Zero
 normalise : MExpr a -> MExpr a
 normalise m = reify (translate m)
 
-lemma1 : Monoid' a => (x : MExpr a) -> (y : MExpr a) -> eval (normalise (Add x y)) = eval (translate x y)
-lemma1 = ?asdsa
+norm : (x : MExpr a) -> (y : MExpr a) -> normalise x = y -> x = y
+norm (Add x y) t prf = ?sdfsd_1
+norm Zero t prf = prf
+norm (Var x) t prf = ?sdfsd_3
+
 
 lemma2 : Monoid' a => (x : MExpr a) -> (y : MExpr a) -> eval (translate x y) = eval (Add x y)
-lemma2 = ?dfsfsf
+lemma2 (Add x y) z =
+  rewrite sym (assoc (eval x) (eval y) (eval z)) in
+  rewrite sym (lemma2 y z) in
+  lemma2 x (translate y z)
+lemma2 Zero y = rewrite neutralL (eval y) in Refl
+lemma2 (Var x) y = Refl
+
+lemma1 : Monoid' a => (x : MExpr a) -> (y : MExpr a) -> eval (normalise (Add x y)) = eval (translate x y)
+lemma1 (Add x y) z =
+  rewrite lemma2 x (translate y z) in
+  rewrite sym (lemma1 y z) in
+  lemma2 x (translate y (translate z Zero))
+lemma1 (Var x) (Add y z) = rewrite sym (lemma2 y z) in rewrite lemma1 y z in Refl
+lemma1 (Var x) Zero = Refl
+lemma1 (Var x) (Var y) = rewrite neutralR y in Refl
+lemma1 Zero (Add x y) = rewrite sym (lemma2 x y) in rewrite lemma1 x y in Refl
+lemma1 Zero Zero = Refl
+lemma1 Zero (Var x) = neutralR x
 
 soundness : Monoid' a => (x : MExpr a) -> eval (normalise x) = eval x
 soundness (Add e1 e2) = rewrite sym (lemma2 e1 e2) in rewrite lemma1 e1 e2 in Refl
