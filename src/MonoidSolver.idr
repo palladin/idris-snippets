@@ -1,5 +1,7 @@
 module MonoidSolver
 
+-- Based on https://www.cambridge.org/core/journals/journal-of-functional-programming/article/wellknown-representation-of-monoids-and-its-application-to-the-function-vector-reverse/929D15452762F6BB0A4A68503026D1C4
+
 interface Monoid' a where
   neutral : a
   (<+>) : a -> a -> a
@@ -38,18 +40,32 @@ reify f = f Zero
 normalise : MExpr a -> MExpr a
 normalise m = reify (translate m)
 
+lemma1 : Monoid' a => (x : MExpr a) -> (y : MExpr a) -> eval (normalise (Add x y)) = eval (translate x y)
+lemma1 = ?asdsa
+
+lemma2 : Monoid' a => (x : MExpr a) -> (y : MExpr a) -> eval (translate x y) = eval (Add x y)
+lemma2 = ?dfsfsf
+
 soundness : Monoid' a => (x : MExpr a) -> eval (normalise x) = eval x
-soundness (Add e1 e2) = ?dsdfsf_1
+soundness (Add e1 e2) = rewrite sym (lemma2 e1 e2) in rewrite lemma1 e1 e2 in Refl
 soundness Zero = Refl
 soundness (Var x) = neutralR x
 
 solve : Monoid' a => (x : MExpr a) -> (y : MExpr a) -> eval (normalise x) = eval (normalise y) -> eval x = eval y
-solve (Add e1 e2) (Add e1' e2') prf = ?fsdf
-solve (Add e1 e2) (Var y) prf = ?sfdfs
+solve (Add e1 e2) (Add e1' e2') prf =
+  rewrite sym (lemma2 e1 e2) in
+  rewrite sym (lemma2 e1' e2') in
+  rewrite sym (lemma1 e1 e2) in
+  rewrite sym (lemma1 e1' e2') in
+  prf
+solve (Add e1 e2) (Var y) prf =
+  rewrite sym (neutralR y) in
+  rewrite sym prf in
+  rewrite sym (lemma2 e1 e2) in
+  rewrite lemma1 e1 e2 in Refl
 solve x Zero prf = rewrite sym prf in sym (soundness x)
 solve Zero y prf = rewrite prf in soundness y
-solve (Var x) y prf with (replace {P = (\x => x = eval (normalise y))} (neutralR x) prf)
-  solve (Var x) y prf | prf' = rewrite prf' in soundness y
+solve (Var x) y prf = rewrite sym (neutralR x) in rewrite prf in soundness y
 
 
 example : (xs : List a) -> (ys : List a) -> (zs : List a) -> ((xs ++ []) ++ (ys ++ zs)) = ((xs ++ ys) ++ zs)
