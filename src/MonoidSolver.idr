@@ -40,11 +40,6 @@ reify f = f Zero
 normalise : MExpr a -> MExpr a
 normalise m = reify (translate m)
 
-norm : (x : MExpr a) -> (y : MExpr a) -> normalise x = y -> x = y
-norm (Add x y) t prf = ?sdfsd_1
-norm Zero t prf = prf
-norm (Var x) t prf = ?sdfsd_3
-
 
 lemma2 : Monoid' a => (x : MExpr a) -> (y : MExpr a) -> eval (translate x y) = eval (Add x y)
 lemma2 (Add x y) z =
