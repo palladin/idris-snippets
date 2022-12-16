@@ -31,9 +31,9 @@ lookup Top (Cons x env) = x
 lookup (Pop ref) (Cons x env) = lookup ref env
 
 eval : {Gamma : Ctx} -> Term Gamma t -> Env Gamma -> Val t
-eval (App t1 t2) env = (eval t1 env) (eval t2 env)
-eval (Lam t) env = \x => eval t (Cons x env)
-eval (Var x) env = lookup x env
+eval (App t1 t2) = \env => (eval t1 env) (eval t2 env)
+eval (Lam t) = \env => \x => eval t (Cons x env)
+eval (Var x) = \env => lookup x env
 
 data Comb : (Gamma : Ctx) -> (t : U) -> (Env Gamma -> Val t) -> Type where
   S : {Gamma : Ctx} -> Comb Gamma (Arrow (Arrow a (Arrow b c)) (Arrow (Arrow a b) (Arrow a c))) (\env => \f, g, x => (f x) (g x))
@@ -42,3 +42,21 @@ data Comb : (Gamma : Ctx) -> (t : U) -> (Env Gamma -> Val t) -> Type where
   Var' : {Gamma : Ctx} -> (ref : Ref' t Gamma) -> Comb Gamma t (\env => lookup ref env)
   App' : {Gamma : Ctx} -> {f : Env Gamma -> Val (Arrow a b)} -> {x : Env Gamma -> Val a} ->
           Comb Gamma (Arrow a b) f -> Comb Gamma a x -> Comb Gamma b (\env => (f env) (x env))
+
+
+lambda : {Gamma : Ctx} -> Comb (a :: Gamma) b f -> Comb Gamma (Arrow a b) (\env => \x => f (Cons x env))
+lambda S = let res = App' K S in res
+lambda K = let res = App' K K in res
+lambda I = let res = App' K I in res
+lambda (Var' Top) = I
+lambda (Var' (Pop ref)) = let res = App' K (Var' ref) in res
+lambda (App' t1 t2) = let t1' = lambda t1
+                          t2' = lambda t2
+                          temp = App' S t1'
+                          res = App' temp t2' in
+                          res
+
+translate : {Gamma : Ctx} -> (term : Term Gamma t) -> Comb Gamma t (eval term)
+translate (App t1 t2) = App' (translate t1) (translate t2)
+translate (Lam t) = lambda (translate t)
+translate (Var ref) = Var' ref
