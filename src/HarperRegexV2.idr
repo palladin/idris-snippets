@@ -86,35 +86,47 @@ K t = t -> Bool
 MatchT : Type -> Type
 MatchT t = K t -> Bool
 
-matchi : {t : Type} -> (t -> Regex -> MatchT t) -> Regex -> Char -> t -> MatchT t
-matchi {t} match reg c cs k = ?fsfs
 
-MatchX : Type -> Type
-MatchX r = Regex -> MatchT r
+data MatchX : Type -> Type where
+  InMatchX : (Regex -> MatchT r) -> MatchX r
 
+outMatchX : MatchX r -> Regex -> MatchT r
+outMatchX (InMatchX f) = f
+
+[const] Functor MatchX where
+  map f fa = InMatchX $ \regex, k => outMatchX fa regex (\x => k $ f x)
+
+matchi : {t : Type} -> (t -> MatchX t) -> Regex -> Char -> t -> MatchT t
+matchi {t} match NoMatch c cs k = False
+matchi {t} match (MatchChar c') c cs k = if c == c' then k cs else False
+matchi {t} match (Or r1 r2) c cs k = matchi match r1 c cs k || matchi match r2 c cs k
+matchi {t} match (Plus r) c cs k = matchi match r c cs (\cs =>  k cs || (let matchX = outMatchX $ match cs in matchX (Plus r) k))
+matchi {t} match (Concat r1 r2) c cs k = matchi match r1 c cs (\cs => let matchX = outMatchX $ match cs in matchX r2 k)
 
 match : AlgF (ListF Char) MatchX
-match _ rec Nil reg k = False
-match _ rec (Cons c cs) reg k = matchi rec reg c cs k
+match _ rec Nil = InMatchX (\reg, k => False)
+match _ rec (Cons c cs) = InMatchX (\reg, k => matchi rec reg c cs k)
 
 foldMatch : Dc (ListF Char) -> Regex -> Bool
-foldMatch xs reg = fold {f = ListF Char} MatchX ?sfsfs match xs reg (\_ => True)
+foldMatch xs reg =
+  let matchX = outMatchX $ fold {f = ListF Char} MatchX const match xs in
+  matchX reg (\_ => True)
 
 
 example : Regex
 example = concat (concat (char 'c') (plus $ or (char 'a') (char 'd'))) (char 'r')
 
-test0 : Bool
-test0 = foldMatch (str "car") example
+test0 : foldMatch (str "car") Regex.example = True
+test0 = Refl
 
-test1 : Bool
-test1 = foldMatch (str "cdr") example
+test1 : foldMatch (str "cdr") Regex.example = True
+test1 = Refl
 
-test2 : Bool
-test2 = foldMatch (str "cr") example
+test2 : foldMatch (str "cr") Regex.example = False
+test2 = Refl
 
-test3 : Bool
-test3 = foldMatch (str "cddar") example
+test3 : foldMatch (str "cddar") Regex.example = True
+test3 = Refl
 
-test4 : Bool
-test4 = foldMatch (str "cdda") example
+test4 : foldMatch (str "cdda") Regex.example = False
+test4 = Refl
