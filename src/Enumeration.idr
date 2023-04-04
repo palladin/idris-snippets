@@ -53,7 +53,7 @@ data ElemOf : a -> List a -> Type where
   There : ElemOf x xs -> ElemOf x (y :: xs)
 
 data Occurs : a -> Enumerator a a -> Type where
-  C : (n : Nat) ->  ElemOf x (enumerate e n) -> Occurs x e
+  OC : (n : Nat) ->  ElemOf x (enumerate e n) -> Occurs x e
 
 Complete : Enumerator a a -> Type
 Complete {a} e = (x : a) -> Occurs x e
@@ -63,8 +63,21 @@ Unique xs = (x : a) -> (p1, p2 : ElemOf x xs) -> p1 = p2
 
 
 -- Example
+data Tree : Type where
+  Leaf : Tree
+  Node : Tree -> Tree -> Tree
+
+trees : Enumerator Tree Tree
+trees = pure Leaf <|> Node <$> rec <*> rec
+
 nats : Enumerator Nat Nat
 nats = pure Z <|> S <$> rec
 
 test : enumerate Enumeration.nats 3 = [0, 1, 2]
 test = Refl
+
+test' : enumerate Enumeration.trees 3 = [Leaf, Node Leaf Leaf,
+                                         Node Leaf (Node Leaf Leaf),
+                                         Node (Node Leaf Leaf) Leaf,
+                                         Node (Node Leaf Leaf) (Node Leaf Leaf)]
+test' = Refl
