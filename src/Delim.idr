@@ -19,12 +19,20 @@ mutual
 unCC : CC p m a -> ({w : Type} -> (a -> m w) -> ({x : Type} -> SubCont p m x a -> p m x -> m w) -> m w)
 unCC (MkCC f) = f
 
-pure : a -> CC p m a
-pure x = MkCC $ \ki, kd => ki x
+Functor f => Functor (CC p f) where
+  map f fa = MkCC $ \ki, kd => unCC fa (\a => ki $ f a)
+                                       (\ctx => kd (\x => map f $ ctx x))
 
-(>>=) : CC p m a -> (a -> CC p m b) -> CC p m b
-m >>= f = MkCC $ \ki, kd => unCC m (\a => unCC (f a) ki kd)
-                                   (\ctx => kd (\x => ctx x >>= f))
+Applicative f => Applicative (CC p f) where
+  pure x = MkCC $ \ki, kd => ki x
+
+  ff <*> fa = MkCC $ \ki, kd => unCC fa (\a => unCC ff (\f => ki $ f a) (\ctx => kd (\x => ctx x <*> fa)))
+                                        (\ctx => kd (\x => ff <*> ctx x))
+
+Monad m => Monad (CC p m) where
+  m >>= f = MkCC $ \ki, kd => unCC m (\a => unCC (f a) ki kd)
+                                     (\ctx => kd (\x => ctx x >>= f))
+
 
 pushPrompt : Monad m => Prompt p m a -> CC p m a -> CC p m a
 pushPrompt (MkPrompt inj prj) body = MkCC $ \ki, kd => unCC body ki (kd' (MkPrompt inj prj) ki kd)
@@ -42,3 +50,11 @@ pushSubCont sk cc = sk cc
 
 runCC : (Monad m, Catchable m String) => CC p m a -> m a
 runCC m = unCC m pure (\_, _ => throw "Escaping bubble: you have forgotten pushPrompt")
+
+abortP : Monad m => Prompt p m a -> CC p m a -> CC p m b
+abortP p e = takeSubCont p (\_ => e)
+
+shiftP : Monad m => Prompt p m b -> ((a -> CC p m b) -> CC p m b) -> CC p m a
+shiftP p f = takeSubCont p $ \sk =>
+	             pushPrompt p (f (\c =>
+		              pushPrompt p (pushSubCont sk (return c))))
