@@ -1,5 +1,7 @@
 module Delim
 
+-- Baed on https://okmij.org/ftp/continuations/CCmonad/CCCxe.hs
+
 import Control.Catchable
 
 
@@ -57,4 +59,14 @@ abortP p e = takeSubCont p (\_ => e)
 shiftP : Monad m => Prompt p m b -> ((a -> CC p m b) -> CC p m b) -> CC p m a
 shiftP p f = takeSubCont p $ \sk =>
 	             pushPrompt p (f (\c =>
-		              pushPrompt p (pushSubCont sk (return c))))
+		              pushPrompt p (pushSubCont sk (pure c))))
+
+data PS : (w : Type) -> (m : Type -> Type) -> (x : Type) -> Type where
+  MkPS : CCT (PS w) m x w -> PS w m x
+
+
+ps : Prompt (PS w) m w
+ps = MkPrompt MkPS prj
+  where
+    prj : PS w m x -> Maybe ((CC (PS w) m x -> CC (PS w) m w) -> CC (PS w) m w)
+    prj (MkPS x) = Just x
