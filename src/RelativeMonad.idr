@@ -1,5 +1,6 @@
 module RelativeMonad
 
+-- Based on https://www.researchgate.net/publication/286096562_Relative_Monads_Formalised
 
 record Monoid where
   constructor MkMonoid
@@ -9,8 +10,6 @@ record Monoid where
   lid : {m : S} -> e . m = m
   rid : {m : S} -> m . e = m
   assoc : {m, n, o : S} -> (m . n) . o = m . (n . o)
-
-
 
 NatMonoid : Monoid
 NatMonoid = MkMonoid
@@ -26,3 +25,28 @@ NatMonoid = MkMonoid
 
     plusZeroRight : {m : Nat} -> m + 0 = m
     plusZeroRight {m} = plusZeroRightNeutral m
+
+record Cat where
+  constructor MkCat
+  Obj : Type
+  Hom : Obj -> Obj -> Type
+  iden : {x : Obj} -> Hom x x
+  comp : {x, y, z : Obj} -> Hom y z -> Hom x y -> Hom x z
+  idl : {x, y : Obj} -> {f : Hom x y} -> comp iden f = f
+  idr : {x, y : Obj} -> {f : Hom x y} -> comp f iden = f
+  assoc : {w, x, y, z : Obj} -> {f : Hom y z} -> {g : Hom x y} -> {h : Hom w x} ->
+            comp (comp f g) h = comp f (comp g h)
+
+
+TypeCat : Cat
+TypeCat = MkCat
+  Type
+  TypeMorph
+  id
+  (.)
+  Refl
+  Refl
+  Refl
+  where
+    TypeMorph : Type -> Type -> Type
+    TypeMorph a b = a -> b
