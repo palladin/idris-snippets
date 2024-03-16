@@ -37,7 +37,6 @@ record Cat where
   assoc : {w, x, y, z : Obj} -> {f : Hom y z} -> {g : Hom x y} -> {h : Hom w x} ->
             comp (comp f g) h = comp f (comp g h)
 
-
 TypeCat : Cat
 TypeCat = MkCat
   Type
@@ -50,3 +49,13 @@ TypeCat = MkCat
   where
     TypeMorph : Type -> Type -> Type
     TypeMorph a b = a -> b
+
+Op : Cat -> Cat
+Op cat = MkCat
+  (Obj cat)
+  (\x, y => Hom cat y x)
+  (iden cat)
+  (\f, g => comp cat g f)
+  (idr cat)
+  (idl cat)
+  (sym (assoc cat))
