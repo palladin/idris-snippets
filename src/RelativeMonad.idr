@@ -75,39 +75,60 @@ listMap _ _ f (x :: xs) = f x :: listMap _ _ f xs
 
 postulate funext : (f, g : a -> b) -> ((x : a) -> f x = g x) -> f = g
 
-funId : (a : Type) -> (xs : List a) -> listMap a a (identity a) xs = identity (List a) xs
-funId _ [] = Refl
-funId _ (x :: xs) = cong (funId _ xs)
+listId : (a : Type) -> (xs : List a) -> listMap a a (identity a) xs = identity (List a) xs
+listId _ [] = Refl
+listId _ (x :: xs) = cong (listId _ xs)
 
-funIdExt : (a : Type) -> listMap a a (identity a) = identity (List a)
-funIdExt a = funext (\xs => listMap a a (identity a) xs) (\xs => identity (List a) xs) (funId a)
+listIdExt : (a : Type) -> listMap a a (identity a) = identity (List a)
+listIdExt a = funext (\xs => listMap a a (identity a) xs) (\xs => identity (List a) xs) (listId a)
 
-funComp : (a, b, c : Type) -> (f : a -> b) -> (g : b -> c) ->
+listComp : (a, b, c : Type) -> (f : a -> b) -> (g : b -> c) ->
           (xs : List a) -> listMap a c (g . f) xs = listMap b c g (listMap a b f xs)
-funComp _ _ _ _ _ [] = Refl
-funComp _ _ _ _ _ (x :: xs) = cong (funComp _ _ _ _ _ xs)
+listComp _ _ _ _ _ [] = Refl
+listComp _ _ _ _ _ (x :: xs) = cong (listComp _ _ _ _ _ xs)
 
-funCompExt : (a, b, c : Type) -> (f : a -> b) -> (g : b -> c) ->
+listCompExt : (a, b, c : Type) -> (f : a -> b) -> (g : b -> c) ->
                 listMap a c (g . f) = (\xs => listMap b c g (listMap a b f xs))
-funCompExt a b c f g = funext (\xs => listMap a c (g . f) xs) (\xs => listMap b c g (listMap a b f xs)) (funComp a b c f g)
+listCompExt a b c f g = funext (\xs => listMap a c (g . f) xs)
+                               (\xs => listMap b c g (listMap a b f xs))
+                               (listComp a b c f g)
 
 ListFunctor : Fun TypeCat TypeCat
 ListFunctor = MkFun
   List
   listMap
-  funIdExt
-  funCompExt
+  listIdExt
+  listCompExt
 
 maybeMap : (a : Type) -> (b : Type) -> (a -> b) -> Maybe a -> Maybe b
 maybeMap _ _ f Nothing = Nothing
 maybeMap _ _ f (Just x) = Just (f x)
-{-
+
+maybeId : (a : Type) -> (m : Maybe a) -> maybeMap a a (identity a) m = identity (Maybe a) m
+maybeId _ Nothing = Refl
+maybeId _ (Just x) = Refl
+
+maybeIdExt : (a : Type) -> maybeMap a a (identity a) = identity (Maybe a)
+maybeIdExt a = funext (\m => maybeMap a a (identity a) m ) (\m => identity (Maybe a) m) (maybeId a)
+
+maybeComp : (a, b, c : Type) -> (f : a -> b) -> (g : b -> c) ->
+            (m : Maybe a) -> maybeMap a c (\x => g (f x)) m = maybeMap b c g (maybeMap a b f m)
+maybeComp = ?fsfs
+
+maybeCompExt : (a, b, c : Type) -> (f : a -> b) -> (g : b -> c) ->
+                  maybeMap a c (\x => g (f x)) = (\m => maybeMap b c g (maybeMap a b f m))
+maybeCompExt a b c f g = funext (\m => maybeMap a c (\x => g (f x)) m)
+                                (\m => maybeMap b c g (maybeMap a b f m))
+                                (maybeComp a b c f g)
+
 MaybeFunctor : Fun TypeCat TypeCat
 MaybeFunctor = MkFun
   Maybe
   maybeMap
-  ?dad
+  maybeIdExt
+  maybeCompExt
 
+{-
 record NatT (c : Cat) (d : Cat) (f : Fun c d) (g : Fun c d) where
   constructor MkNatT
   cmp : {x : Obj c} -> Hom d (OMap f x) (OMap g x)
