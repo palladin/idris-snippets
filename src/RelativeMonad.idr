@@ -115,7 +115,8 @@ maybeIdExt a = funext (\m => maybeMap a a (identity a) m ) (\m => identity (Mayb
 
 maybeComp : (a, b, c : Type) -> (f : a -> b) -> (g : b -> c) ->
             (m : Maybe a) -> maybeMap a c (\x => g (f x)) m = maybeMap b c g (maybeMap a b f m)
-maybeComp = ?fsfs
+maybeComp _ _ _ _ _ Nothing = Refl
+maybeComp _ _ _ _ _ (Just x) = Refl
 
 maybeCompExt : (a, b, c : Type) -> (f : a -> b) -> (g : b -> c) ->
                   maybeMap a c (\x => g (f x)) = (\m => maybeMap b c g (maybeMap a b f m))
@@ -204,3 +205,32 @@ MaybeMonad = MkMonad
   law1Ext
   law2
   law3Ext
+
+-- Relative Monad
+record RMonad (c : Cat) (d : Cat) (j : Fun c d) where
+  constructor MkRMonad
+  T : Obj c -> Obj d
+  eta : (x : Obj c) -> Hom d (OMap j x) (T x)
+  bind : (x, y : Obj c) -> Hom d (OMap j x) (T y) -> Hom d (T x) (T y)
+  law1 : (x : Obj c) -> bind x x (eta x) = iden d (T x)
+  law2 : (x, y : Obj c) -> (f : Hom d (OMap j x) (T y)) ->
+            comp d (OMap j x) (T x) (T y) (eta x) (bind x y f) = f
+  law3 : (x, y, z : Obj c) -> (f : Hom d (OMap j x) (T y)) -> (g : Hom d (OMap j y) (T z)) ->
+            bind x z (comp d (OMap j x) (T y) (T z) f (bind y z g)) =
+            comp d (T x) (T y) (T z) (bind x y f) (bind y z g)
+
+IdF : (c : Cat) -> Fun c c
+IdF c = MkFun
+  id
+  (\_,_ => id)
+  (\_ => Refl)
+  (\_,_,_,_,_ => Refl)
+
+MonadToRMonad : (c : Cat) -> Monad c -> RMonad c c (IdF c)
+MonadToRMonad c m = MkRMonad
+  (T m)
+  (eta m)
+  (bind m)
+  (law1 m)
+  (law2 m)
+  (law3 m)
