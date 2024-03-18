@@ -128,20 +128,32 @@ MaybeFunctor = MkFun
   maybeIdExt
   maybeCompExt
 
-{-
+
 record NatT (c : Cat) (d : Cat) (f : Fun c d) (g : Fun c d) where
   constructor MkNatT
-  cmp : {x : Obj c} -> Hom d (OMap f x) (OMap g x)
-  nat : {x, y : Obj c} -> {h : Hom c x y} ->
-          comp d (HMap g h) cmp = comp d cmp (HMap f h)
+  cmp : (x : Obj c) -> Hom d (OMap f x) (OMap g x)
+  nat : (x, y : Obj c) -> (h : Hom c x y) ->
+          comp d (OMap f x) (OMap f y) (OMap g y) (HMap f x y h) (cmp y) =
+          comp d (OMap f x) (OMap g x) (OMap g y) (cmp x) (HMap g x y h)
+
+maybeToList : (x : Type) -> Maybe x -> List x
+maybeToList _ Nothing = []
+maybeToList _ (Just x) = [x]
+
+maybeToListNat : (a : Type) -> (b : Type) -> (h : a -> b) -> (m : Maybe a) ->
+                    (maybeToList b (maybeMap a b h m)) =
+                    (listMap a b h (maybeToList a m))
+maybeToListNat _ _ _ Nothing = Refl
+maybeToListNat _ _ _ (Just x) = Refl
+
+maybeToListNatExt : (a : Type) -> (b : Type) -> (h : a -> b) ->
+                    (maybeToList b) . (maybeMap a b h) =
+                    (listMap a b h) . (maybeToList a)
+maybeToListNatExt a b h = funext (\m => (maybeToList b (maybeMap a b h m)))
+                                 (\m => (listMap a b h (maybeToList a m)))
+                                 (maybeToListNat a b h)
 
 MaybeListNat : NatT TypeCat TypeCat MaybeFunctor ListFunctor
 MaybeListNat = MkNatT
-  cmp
-  ?Sfsdf
-  where
-    cmp : {x : Type} -> Maybe x -> List x
-    cmp Nothing = []
-    cmp (Just x) = [x]
-
--}
+  maybeToList
+  maybeToListNatExt
