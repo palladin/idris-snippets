@@ -26,6 +26,7 @@ NatMonoid = MkMonoid
     plusZeroRight : (m : Nat) -> m + 0 = m
     plusZeroRight m = plusZeroRightNeutral m
 
+-- Category
 record Cat where
   constructor MkCat
   Obj : Type
@@ -61,6 +62,7 @@ TypeCat = MkCat
   idRight
   associativity
 
+-- Functor
 record Fun (c : Cat) (d : Cat) where
   constructor MkFun
   OMap : Obj c -> Obj d
@@ -128,7 +130,7 @@ MaybeFunctor = MkFun
   maybeIdExt
   maybeCompExt
 
-
+-- Natural transformation
 record NatT (c : Cat) (d : Cat) (f : Fun c d) (g : Fun c d) where
   constructor MkNatT
   cmp : (x : Obj c) -> Hom d (OMap f x) (OMap g x)
@@ -157,3 +159,48 @@ MaybeListNat : NatT TypeCat TypeCat MaybeFunctor ListFunctor
 MaybeListNat = MkNatT
   maybeToList
   maybeToListNatExt
+
+record Monad (c : Cat) where
+  constructor MkMonad
+  T : Obj c -> Obj c
+  eta : (x : Obj c) -> Hom c x (T x)
+  bind : (x, y : Obj c) -> Hom c x (T y) -> Hom c (T x) (T y)
+  law1 : (x : Obj c) -> bind x x (eta x) = iden c (T x)
+  law2 : (x, y : Obj c) -> (f : Hom c x (T y)) -> comp c x (T x) (T y) (eta x) (bind x y f) = f
+  law3 : (x, y, z : Obj c) -> (f : Hom c x (T y)) -> (g : Hom c y (T z)) ->
+            bind x z (comp c x (T y) (T z) f (bind y z g)) =
+            comp c (T x) (T y) (T z) (bind x y f) (bind y z g)
+
+mbind : (a, b : Type) -> (a -> Maybe b) -> Maybe a -> Maybe b
+mbind _ _ f (Just x) = f x
+mbind _ _ f Nothing = Nothing
+
+law1 : (a : Type) -> (m : Maybe a) -> mbind a a (\x => Just x) m = identity (Maybe a) m
+law1 a Nothing = Refl
+law1 a (Just x) = Refl
+
+law1Ext : (a : Type) -> mbind a a (\x => Just x) = identity (Maybe a)
+law1Ext a = funext (\m => mbind a a (\x => Just x) m) (\m => identity (Maybe a) m) (law1 a)
+
+law2 : (a : Type) -> (b : Type) -> (f : a -> Maybe b) -> (\x => f x) = f
+law2 a b f  = Refl
+
+law3 : (a, b, c : Type) -> (f : a -> Maybe b) -> (g : b -> Maybe c) -> (m : Maybe a) ->
+            mbind a c (\x => mbind b c g (f x)) m = mbind b c g (mbind a b f m)
+law3 _ _ _ _ _ Nothing = Refl
+law3 _ _ _ _ _ (Just x) = Refl
+
+law3Ext : (a, b, c : Type) -> (f : a -> Maybe b) -> (g : b -> Maybe c) ->
+            mbind a c (\x => mbind b c g (f x)) = (\x => mbind b c g (mbind a b f x))
+law3Ext a b c f g = funext (\m => mbind a c (\x => mbind b c g (f x)) m)
+                           (\m => mbind b c g (mbind a b f m))
+                           (law3 a b c f g)
+
+MaybeMonad : Monad TypeCat
+MaybeMonad = MkMonad
+  Maybe
+  (\_, x => Just x)
+  mbind
+  law1Ext
+  law2
+  law3Ext
